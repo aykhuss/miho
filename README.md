@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # ミホ (miho) 
 > theory uncertainties from MIssing Higher Orders
 
@@ -24,7 +23,4 @@ cd build
 cmake ..
 make
 ```
-=======
-# miho
-theory uncertainties from MIssing Higher Orders
->>>>>>> cf6a8d5dfc5d5095eae79ac45b2e5a396616c348
+
