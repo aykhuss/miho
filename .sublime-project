@@ -1,0 +1,33 @@
+{
+    "folders":
+    [
+        {
+            "path": "src",
+            "folder_exclude_patterns": ["backup"],
+            "follow_symlinks": true
+        },
+        {
+            "path": "docs",
+            "name": "Documentation",
+            "file_exclude_patterns": ["*.css"]
+        }
+    ],
+    "settings":
+    {
+        "SublimeLinter.linters.clang++.I": [
+                "${file_path}/include",
+                "${folder}/include",
+                "${file_path}",
+                "./extern/CLI11/include",
+                "./extern/fmt/include"
+            ]
+    }
+    // ,
+    //"build_systems":
+    //[
+    //    {
+    //        "name": "List",
+    //        "shell_cmd": "ls -l"
+    //    }
+    //]
+}
