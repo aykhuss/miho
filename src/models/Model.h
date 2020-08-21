@@ -19,13 +19,15 @@ class Model {
   // double moment() {
   //   return integrate([](double x) { return std::pow(x,p); });
   // }
-  double moment(int p) {
+  inline double moment(int p) {
     return integrate([=](double x) { return std::pow(x, p); });
   }
-  double mean() {
+  inline double mean() {
     return integrate([](double x) { return x; });
     // return moment(1);
   }
+  inline double variance() { return moment(2) - std::pow(mean(), 2); }
+  inline double stdev() { return std::sqrt(variance()); }
   std::pair<double, double> degree_of_belief_interval(const double& p = 0.68);
   double median() {
     std::pair<double, double> dob = degree_of_belief_interval(0.5);
@@ -42,6 +44,8 @@ class Model {
   size_t _n_orders;
 
   static bool is_approx(const double& x, const double& y) {
+  	// 1.0 is here because epsilon is the smallest difference
+  	// that can be distinguished from 1.0
     double max_val = std::max({1.0, std::fabs(x), std::fabs(y)});
     return std::fabs(x - y) <= std::numeric_limits<double>::epsilon() * max_val;
   }

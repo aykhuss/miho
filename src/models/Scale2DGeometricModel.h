@@ -13,11 +13,11 @@ class Scale2DGeometricModel : public Model {
   double sigma(int order) const;
   double pdf(const double& val) const;
   // use Move eventually!
-  void add_model(const double& fac_muR, const double& fac_muF,
+  void add_model(const std::pair<double, double> fac_mu,
                  const GeometricModel& gm) {
     std::cout << "# add_model: _n_orders = " << _n_orders << std::endl;
-    _scale_models.insert(
-        std::pair<Scale2D, GeometricModel>(Scale2D(fac_muR, fac_muF), gm));
+    _scale_models.insert(std::pair<Scale2D, GeometricModel>(
+        Scale2D(fac_mu.first, fac_mu.second), gm));
     if (_n_orders == 0) {
       _n_orders = gm.n_orders();
     } else if (_n_orders != gm.n_orders()) {
@@ -34,11 +34,12 @@ class Scale2DGeometricModel : public Model {
     Scale2D(const double& valR, const double& valF)
         : fac_muR(valR), fac_muF(valF) {}
     bool operator<(const Scale2D& other) const {
-      // first sort in muR, then in muF
-      if (fac_muR != other.fac_muR) {
-        return fac_muR < other.fac_muR;
-      } else {
+      // first sort in muF, then in muR
+      // => first loop over muR, then muF
+      if (fac_muF != other.fac_muF) {
         return fac_muF < other.fac_muF;
+      } else {
+        return fac_muR < other.fac_muR;
       }
     }
   };

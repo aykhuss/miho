@@ -59,7 +59,7 @@ void Model::adapt_integration(std::function<double(double)> func) {
     _nodes.emplace_back(nupp);
   }
 
-  while (_nodes.size() < 777) {
+  while (_nodes.size() < 1000) {
     double jump = 0.;
     auto node_pos = _nodes.begin();
     for (auto it = _nodes.begin(); it != _nodes.end(); ++it) {
