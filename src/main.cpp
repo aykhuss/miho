@@ -12,13 +12,22 @@
 #include "Scale1DGeometricModel.h"
 #include "Scale2DGeometricModel.h"
 
+
+void print_format(std::string, std::shared_ptr<miho::Model>);
+
 int main(int argc, char const* argv[]) {
   CLI::App app{"ミホ (miho) - theory uncertainties from MIssing Higher Orders"};
-  app.footer("[powered by QCD coffe]");
+  app.footer("[powered by CERN QCD coffee]");
 
   // global settings for all models
-  bool flag_bool;
-  app.add_flag("--bool,-b", flag_bool, "This is a bool flag");
+  bool flag_pdf = false;
+  app.add_flag("--pdf", flag_pdf, "Print out the probability distribution.");
+  std::string format_string{"{median} {dob68_low} {dob68_upp} \n"};
+  app.add_option("--format", format_string, "Output formatting string.");
+  size_t nmax = 1000;
+  app.add_option("--nmax", nmax, "Set the maximum number of PDF evaliations.");
+  double accuracy = 0.001;  // default: 0.1%
+  app.add_option("--accuracy", accuracy, "Set the target accuracy of the integration.");
 
   app.require_subcommand(/* min */ 0, /* max */ 1);
 
@@ -46,13 +55,8 @@ int main(int argc, char const* argv[]) {
 
   CLI11_PARSE(app, argc, argv);
 
-  std::shared_ptr<miho::Model> cli_model = nullptr;
 
-  if (flag_bool) {
-    fmt::print("# BOOL flag set!\n");
-  } else {
-    fmt::print("# BOOL flag *not* set!\n");
-  }
+  std::shared_ptr<miho::Model> cli_model = nullptr;
 
   if (app.got_subcommand(app_gm)) {
     fmt::print("# GeometricModel\n");
@@ -174,27 +178,26 @@ int main(int argc, char const* argv[]) {
     cli_model = scl2gm;
   }
 
-  //>>> do something with cli_model <<<
+  //>>> evaluate cli_model <<<
 
-  // double val_low = 450.;
-  // double val_upp = 550.;
-  // size_t n_steps = 400;
-  // // double val_low = 0.;
-  // // double val_upp = 70.;
-  // // size_t n_steps = 700;
-  // for (auto i = 0; i <= n_steps; ++i) {
-  //   double val = val_low + i * (val_upp - val_low) / n_steps;
-  //   double xs = cli_model->pdf(val);
-  //   std::cout << val << "\t" << xs << std::endl;
-  // }
+  cli_model->set_max_nodes(nmax);
+  cli_model->set_accuracy(accuracy);
 
-  cli_model->print_nodes();
+  if (flag_pdf) {
+    cli_model->print_nodes();
+  }
+
+  print_format(format_string, cli_model);
+
+
+
+  return 0;
 
   double norm = cli_model->integrate([](double) { return 1.; });
   // fmt::print("# normalisation: {}", norm);
 
-  double median = cli_model->median();
-  std::pair<double, double> DoB68 = cli_model->degree_of_belief_interval();
+  double median2 = cli_model->median();
+  std::pair<double, double> DoB682 = cli_model->degree_of_belief_interval();
   std::pair<double, double> DoB95 = cli_model->degree_of_belief_interval(0.95);
   double mean = cli_model->mean();
   double stdev = cli_model->stdev();
@@ -203,8 +206,8 @@ int main(int argc, char const* argv[]) {
   double m3 = cli_model->moment(3);
   double variance =
       cli_model->integrate([=](double x) { return pow(x - mean, 2); });
-  fmt::print("#result: {}  {}  {} {}  {} {}  {} {}  {} {} {} \n", mean, median,
-             DoB68.first, DoB68.second, DoB95.first, DoB95.second, stdev,
+  fmt::print("#result: {}  {}  {} {}  {} {}  {} {}  {} {} {} \n", mean, median2,
+             DoB682.first, DoB682.second, DoB95.first, DoB95.second, stdev,
              std::sqrt(variance), m1, m2, m3);
 
   return 0;
@@ -251,3 +254,37 @@ int main(int argc, char const* argv[]) {
   //
   //   return 0;
 }
+
+
+void print_format(std::string format_string, std::shared_ptr<miho::Model> model) {
+  fmt::dynamic_format_arg_store<fmt::format_context> format_arg_list;
+  if (std::regex_search(format_string, std::regex("\\{norm\\}"))) {
+    double norm = model->norm();
+    format_arg_list.push_back<double>(fmt::arg("norm", norm));
+  }
+  if (std::regex_search(format_string, std::regex("\\{median\\}"))) {
+    double median = model->median();
+    format_arg_list.push_back<double>(fmt::arg("median", median));
+  }
+  if (std::regex_search(format_string, std::regex("\\{dob68_low\\}")) ||
+      std::regex_search(format_string, std::regex("\\{dob68_upp\\}"))) {
+    std::pair<double, double> DoB68 = model->degree_of_belief_interval();
+    format_arg_list.push_back(fmt::arg("dob68_low", DoB68.first));
+    format_arg_list.push_back(fmt::arg("dob68_upp", DoB68.second));
+  }
+  if (std::regex_search(format_string, std::regex("\\{dob95_low\\}")) ||
+      std::regex_search(format_string, std::regex("\\{dob95_upp\\}"))) {
+    std::pair<double, double> DoB95 = model->degree_of_belief_interval(0.95);
+    format_arg_list.push_back(fmt::arg("dob95_low", DoB95.first));
+    format_arg_list.push_back(fmt::arg("dob95_upp", DoB95.second));
+  }
+  if (std::regex_search(format_string, std::regex("\\{mean\\}")) ||
+      std::regex_search(format_string, std::regex("\\{stdev\\}"))) {
+    double mean = model->mean();  // first compute the mean o recycle adaption
+    double stdev = model->stdev();
+    format_arg_list.push_back(fmt::arg("mean", mean));
+    format_arg_list.push_back(fmt::arg("stdev", stdev));
+  }
+  fmt::vprint(format_string.c_str(), format_arg_list);
+}
+

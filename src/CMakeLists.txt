@@ -5,9 +5,10 @@ add_executable(miho main.cpp)
 add_subdirectory(models)
 
 target_link_libraries(miho
+  PUBLIC
+  fmt::fmt
 	PRIVATE
 	models
-	fmt::fmt
   CLI11::CLI11
 )
 

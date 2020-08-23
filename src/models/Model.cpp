@@ -15,7 +15,7 @@ bool Model::node_exists(const Node& n) {
   return false;
 }
 
-// very naive implementation to integrate over the pdf.
+// very naive importance sampling to integrate over the pdf.
 void Model::adapt_integration(std::function<double(double)> func) {
   // std::cout << "integrate at order " << _n_orders << "\n";
   // find three nodes to seed the integration
@@ -59,17 +59,21 @@ void Model::adapt_integration(std::function<double(double)> func) {
     _nodes.emplace_back(nupp);
   }
 
-  while (_nodes.size() < 1000) {
+  while (_nodes.size() < _max_nodes) {
+    double result = 0.;
     double jump = 0.;
     auto node_pos = _nodes.begin();
     for (auto it = _nodes.begin(); it != _nodes.end(); ++it) {
       // compute some accumulator
       if (it == _nodes.begin()) continue;
-      double dres = std::fabs((it->x - std::prev(it)->x) *
-                              (it->y + std::prev(it)->y) / 2.);
+      double dres =
+          (it->x - std::prev(it)->x) * (it->y + std::prev(it)->y) / 2.;
+      result += dres;
+      dres = std::fabs(dres);
       if (dres > jump) {
         jump = dres;
         node_pos = it;
+        // std::cout << "dres: " << dres << std::endl;
       }
     }
 
@@ -80,6 +84,7 @@ void Model::adapt_integration(std::function<double(double)> func) {
     // fmt::print("# > normal jump? {} by {}\n", n_new.x, jump);
 
     // possibly extend range?
+    bool qextended = false;
     double x0, dres0;
     Node n1, n2;
     const double weight = 1e3;
@@ -90,6 +95,7 @@ void Model::adapt_integration(std::function<double(double)> func) {
     if (x0 >= n1.x) x0 = n1.x - weight * (n2.x - n1.x);
     dres0 = std::fabs((n1.x - x0) * n1.y / 2.);
     if (dres0 > jump) {
+      qextended = true;
       jump = dres0;
       node_pos = _nodes.begin();
       n_new.x = x0;
@@ -102,6 +108,7 @@ void Model::adapt_integration(std::function<double(double)> func) {
     if (x0 <= n1.x) x0 = n1.x - weight * (n2.x - n1.x);
     dres0 = std::fabs((n1.x - x0) * n1.y / 2.);
     if (dres0 > jump) {
+      qextended = true;
       jump = dres0;
       node_pos = _nodes.end();
       n_new.x = x0;
@@ -112,8 +119,33 @@ void Model::adapt_integration(std::function<double(double)> func) {
     // fmt::print("#  >> new x = {}\n", n_new.x);
     n_new.y = pdf(n_new.x) * func(n_new.x);
     // fmt::print("#  >> new y = {}\n", n_new.y);
-    _nodes.insert(node_pos, n_new);
+    node_pos = _nodes.insert(node_pos, n_new);
     // fmt::print("# new element: ({},{}) \n", n_new.x, n_new.y);
+
+    // check for accuracy termination condition
+    if (!qextended) {
+      // guaranteed to be somewhere in the "middle"
+      double region_old = (std::next(node_pos)->x - std::prev(node_pos)->x) *
+                          (std::next(node_pos)->y + std::prev(node_pos)->y) /
+                          2.;
+      double region_new = 0.;
+      region_new += (std::next(node_pos)->x - node_pos->x) *
+                    (std::next(node_pos)->y + node_pos->y) / 2.;
+      region_new += (node_pos->x - std::prev(node_pos)->x) *
+                    (node_pos->y + std::prev(node_pos)->y) / 2.;
+      // std::cout << "region_old: " << region_old << std::endl;
+      // std::cout << "region_new: " << region_new << std::endl;
+      // double check = 1e4 * std::fabs(region_old - region_new) * _nodes.size();
+      double check = 1.5 * std::fabs(jump); // empirical prefactor
+      // double check = 1.5 * std::fabs(jump) +
+      //                std::fabs(region_old - region_new) * _nodes.size();
+      if ((check / result) <= _target_accuracy) {
+        // std::cout << "reached target accuracy: " << result << " +/- " << check
+        //           << " [" << check / result << "/" << _target_accuracy
+        //           << "] in " << _nodes.size() << " steps\n";
+        break;
+      }
+    }
   }
 }
 
