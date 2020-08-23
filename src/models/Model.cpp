@@ -60,8 +60,11 @@ void Model::adapt_integration(std::function<double(double)> func) {
   }
 
   while (_nodes.size() < _max_nodes) {
-    double result = 0.;
     double jump = 0.;
+    double result = 0.;
+    double error = 0.;
+    double last_derivative = 0.;
+    double curr_derivative = 0.;
     auto node_pos = _nodes.begin();
     for (auto it = _nodes.begin(); it != _nodes.end(); ++it) {
       // compute some accumulator
@@ -75,6 +78,11 @@ void Model::adapt_integration(std::function<double(double)> func) {
         node_pos = it;
         // std::cout << "dres: " << dres << std::endl;
       }
+      // compute the error
+      curr_derivative = (it->y - std::prev(it)->y) / (it->x - std::prev(it)->x);
+      error += std::fabs(curr_derivative - last_derivative) *
+               pow(it->x - std::prev(it)->x, 2) / 12.;
+      last_derivative = curr_derivative;
     }
 
     // place where the termination condition (target accuracy) would go in
@@ -124,21 +132,22 @@ void Model::adapt_integration(std::function<double(double)> func) {
 
     // check for accuracy termination condition
     if (!qextended) {
-      // guaranteed to be somewhere in the "middle"
-      double region_old = (std::next(node_pos)->x - std::prev(node_pos)->x) *
-                          (std::next(node_pos)->y + std::prev(node_pos)->y) /
-                          2.;
-      double region_new = 0.;
-      region_new += (std::next(node_pos)->x - node_pos->x) *
-                    (std::next(node_pos)->y + node_pos->y) / 2.;
-      region_new += (node_pos->x - std::prev(node_pos)->x) *
-                    (node_pos->y + std::prev(node_pos)->y) / 2.;
+      // // guaranteed to be somewhere in the "middle"
+      // double region_old = (std::next(node_pos)->x - std::prev(node_pos)->x) *
+      //                     (std::next(node_pos)->y + std::prev(node_pos)->y) /
+      //                     2.;
+      // double region_new = 0.;
+      // region_new += (std::next(node_pos)->x - node_pos->x) *
+      //               (std::next(node_pos)->y + node_pos->y) / 2.;
+      // region_new += (node_pos->x - std::prev(node_pos)->x) *
+      //               (node_pos->y + std::prev(node_pos)->y) / 2.;
       // std::cout << "region_old: " << region_old << std::endl;
       // std::cout << "region_new: " << region_new << std::endl;
       // double check = 1e4 * std::fabs(region_old - region_new) * _nodes.size();
-      double check = 1.5 * std::fabs(jump); // empirical prefactor
+      // double check = 1.5 * std::fabs(jump); // empirical prefactor
       // double check = 1.5 * std::fabs(jump) +
       //                std::fabs(region_old - region_new) * _nodes.size();
+      double check = error;
       if ((check / result) <= _target_accuracy) {
         // std::cout << "reached target accuracy: " << result << " +/- " << check
         //           << " [" << check / result << "/" << _target_accuracy
