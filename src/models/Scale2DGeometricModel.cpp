@@ -28,6 +28,9 @@ double Scale2DGeometricModel::pdf(const double& val) const {
 
 double Scale2DGeometricModel::pdf_trapezoid(const double& val) const {
 
+  // @todo: disgusting implementation; generalise to arbitrary N dimensions
+  // with generic templated class...
+
   double last_logR = 0.;
   double curr_logR = 0.;
   double last_logF = 0.;

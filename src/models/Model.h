@@ -12,7 +12,7 @@ namespace miho {
 
 class Model {
  public:
-  Model() : _n_orders{0}, _nodes{}, _max_nodes{5000}, _target_accuracy{0.001} {}
+  Model() : _n_orders{0}, _nodes{}, _max_nodes{10000}, _target_accuracy{0.001} {}
   virtual double sigma(int order) const = 0;
   inline double sigma() const { return sigma(_n_orders - 1); };
   inline size_t n_orders() const { return _n_orders; };
@@ -31,7 +31,7 @@ class Model {
   inline double variance() {
     // this is not very efficient, as there are large cancellations!
     // return moment(2) - std::pow(mean(), 2);
-    // much better convergence!
+    // much better convergence this way:
     double mean_val = mean();
     return integrate([=](double x) { return pow(x - mean_val, 2); });
   }

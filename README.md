@@ -24,3 +24,7 @@ cmake ..
 make
 ```
 
+
+use logging at some point:
+https://github.com/gabime/spdlog
+https://github.com/SergiusTheBest/plog
