@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include "ABCModel.h"
 #include "GeometricModel.h"
 #include "Model.h"
 #include "Scale1DGeometricModel.h"
@@ -40,6 +41,8 @@ int main(int argc, char const* argv[]) {
   app.require_subcommand(/* min */ 0, /* max */ 1);
   // standard geometric
   CLI::App* app_gm = app.add_subcommand("geometric", "Use the GeometricModel.");
+  // ABC model
+  CLI::App* app_abc = app.add_subcommand("abc", "Use the ABCModel.");
   // 1D scale
   CLI::App* app_scl1gm = app.add_subcommand(
       "scale1d", "Use the GeometricModel marginalising over one scale.");
@@ -85,6 +88,30 @@ int main(int argc, char const* argv[]) {
     }
 
     cli_model = std::shared_ptr<miho::Model>(new miho::GeometricModel(sigma));
+  }
+
+  //----- ABCModel
+  if (app.got_subcommand(app_abc)) {
+    fmt::print("# ABCModel\n");
+
+    std::vector<double> sigma;
+    if (*app_file) {
+      std::vector<std::vector<double>> data = parse_data_file(file_name);
+      if (data.size()!=1) {
+        throw std::runtime_error(file_name + " contains != 1 record(s)");
+      }
+      sigma = data.front();
+    } else {
+      fmt::print("# Enter XS values @ LO NLO ... separated by spaces: \n");
+      sigma = parse_input(std::cin);
+
+      // std::cout << "# Numbers you entered: ";
+      // std::copy(sigma.begin(), sigma.end(),
+      //           std::ostream_iterator<double>(std::cout, " "));
+      // std::cout << '\n';
+    }
+
+    cli_model = std::shared_ptr<miho::Model>(new miho::ABCModel(sigma));
   }
 
   //----- Scale1DGeometricModel
