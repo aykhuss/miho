@@ -40,7 +40,6 @@ class GeometricModel : public Model {
   double pdf_delta__mu(const double& delta_next) const;
 
   static std::vector<double> a_list(const std::vector<double>& delta);
-  static int binomial(int n, int k);
   static double a_integral(const double& a_lower, const double& a_upper,
                            const double& epsilon, int m, int k, int j);
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Util.h"
+
 // #include <fmt/format.h>
 
 #include <cmath>
@@ -12,7 +14,8 @@ namespace miho {
 
 class Model {
  public:
-  Model() : _n_orders{0}, _nodes{}, _max_nodes{10000}, _target_accuracy{0.001} {}
+  Model()
+      : _n_orders{0}, _nodes{}, _max_nodes{10000}, _target_accuracy{0.001} {}
   virtual double sigma(int order) const = 0;
   inline double sigma() const { return sigma(_n_orders - 1); };
   inline size_t n_orders() const { return _n_orders; };
@@ -53,13 +56,6 @@ class Model {
 
  protected:
   size_t _n_orders;
-
-  static bool is_approx(const double& x, const double& y) {
-    // 1.0 is here because epsilon is the smallest difference
-    // that can be distinguished from 1.0
-    double max_val = std::max({1.0, std::fabs(x), std::fabs(y)});
-    return std::fabs(x - y) <= std::numeric_limits<double>::epsilon() * max_val;
-  }
 
  private:
   struct Node {

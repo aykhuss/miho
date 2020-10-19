@@ -76,7 +76,6 @@ std::vector<double> GeometricModel::a_list(const std::vector<double>& delta) {
       a.push_back(std::fabs(delta[i] / delta[i - 1]));
     } else {
       a.push_back(std::numeric_limits<double>::infinity());
-      //a.push_back(std::fabs(delta[i]) / std::numeric_limits<double>::epsilon());
     }
   }
   a.push_back(0.);  // a[n]
@@ -91,14 +90,21 @@ std::vector<double> GeometricModel::a_list(const std::vector<double>& delta) {
       if (a[i] < a[i + 1]) {
         hit = true;
         if ((i == i_low - 1) || (i == i_upp)) {
+          // we're extending a previous range
           i_low = std::min(i_low, i);
           i_upp = std::max(i_upp, i + 1);
         } else {
+          // a start of a new range
           i_low = i;
           i_upp = i + 1;
         }
         // merge
-        double val = std::fabs(delta[i_upp] / delta[i_low - 1]);
+        double val = 0.;
+        if (delta[i_low - 1] != 0.) {
+          val = std::fabs(delta[i_upp] / delta[i_low - 1]);
+        } else {
+          val = std::numeric_limits<double>::infinity();
+        }
         val = std::pow(val, 1. / double(i_upp - i_low + 1));
         // std::cout << "merging range [" << i_low << "," << i_upp << "] = " <<
         // val
@@ -113,11 +119,6 @@ std::vector<double> GeometricModel::a_list(const std::vector<double>& delta) {
   }
 
   return a;
-}
-
-int GeometricModel::binomial(int n, int k) {
-  if (k == 0 || k == n) return 1;
-  return binomial(n - 1, k) + binomial(n - 1, k - 1);
 }
 
 double GeometricModel::a_integral(const double& a_lower, const double& a_upper,
