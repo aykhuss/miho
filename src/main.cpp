@@ -1,3 +1,4 @@
+#include <fmt/color.h>
 #include <fmt/format.h>
 
 #include <CLI/CLI.hpp>
@@ -9,11 +10,13 @@
 #include <vector>
 
 #include "ABCModel.h"
+#include "ABCNumericModel.h"
 #include "GeometricModel.h"
 #include "Model.h"
 #include "Scale1DGeometricModel.h"
 #include "Scale2DGeometricModel.h"
 
+// fwd declare some functions
 std::vector<double> parse_input(std::istream& data_stream);
 std::vector<std::vector<double>> parse_data_file(const std::string& file_name);
 void print_format(std::string, std::shared_ptr<miho::Model>);
@@ -28,9 +31,9 @@ int main(int argc, char const* argv[]) {
   std::string format_string{"{median} {dob68_low} {dob68_upp} \n"};
   CLI::Option* app_format =
       app.add_option("--format", format_string, "Output formatting string.");
-  size_t nmax = 10000;
+  size_t nmax = 1000;
   app.add_option("--nmax", nmax, "Set the maximum number of PDF evaliations.");
-  double accuracy = 0.001;  // default: 0.1%
+  double accuracy = 0.005;  // default: 0.5%
   app.add_option("--accuracy", accuracy,
                  "Set the target accuracy of the integration.");
   std::string file_name;
@@ -73,7 +76,7 @@ int main(int argc, char const* argv[]) {
     std::vector<double> sigma;
     if (*app_file) {
       std::vector<std::vector<double>> data = parse_data_file(file_name);
-      if (data.size()!=1) {
+      if (data.size() != 1) {
         throw std::runtime_error(file_name + " contains != 1 record(s)");
       }
       sigma = data.front();
@@ -92,12 +95,12 @@ int main(int argc, char const* argv[]) {
 
   //----- ABCModel
   if (app.got_subcommand(app_abc)) {
-    fmt::print("# ABCModel\n");
+    fmt::print("# ABCNumericModel\n");
 
     std::vector<double> sigma;
     if (*app_file) {
       std::vector<std::vector<double>> data = parse_data_file(file_name);
-      if (data.size()!=1) {
+      if (data.size() != 1) {
         throw std::runtime_error(file_name + " contains != 1 record(s)");
       }
       sigma = data.front();
@@ -111,7 +114,7 @@ int main(int argc, char const* argv[]) {
       // std::cout << '\n';
     }
 
-    cli_model = std::shared_ptr<miho::Model>(new miho::ABCModel(sigma));
+    cli_model = std::shared_ptr<miho::Model>(new miho::ABCNumericModel(sigma));
   }
 
   //----- Scale1DGeometricModel
@@ -169,7 +172,6 @@ int main(int argc, char const* argv[]) {
 
     scl2gm->use_gauss_legendre(scl2_gl);
 
-
     if (*app_file) {
       std::vector<std::vector<double>> data = parse_data_file(file_name);
       for (std::vector<double> record : data) {
@@ -180,7 +182,8 @@ int main(int argc, char const* argv[]) {
     } else {
       for (const auto& scl : scl2_vec) {
         fmt::print(
-            "# Enter XS[{}×μ₀,{}×μ₀] values @ LO NLO ... separated by spaces: \n",
+            "# Enter XS[{}×μ₀,{}×μ₀] values @ LO NLO ... separated by spaces: "
+            "\n",
             scl.first, scl.second);
         std::vector<double> sigma = parse_input(std::cin);
         // std::cout << "# Numbers you entered: ";
@@ -192,6 +195,14 @@ int main(int argc, char const* argv[]) {
     }
 
     cli_model = scl2gm;
+  }
+
+  //> check that cli_model is set, otherwise scream for help & die
+  if (cli_model == nullptr) {
+    fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold,
+               "\nno model selected!\n\n");
+    std::cout << app.help() << std::endl;
+    return 1;
   }
 
   //>>> evaluate cli_model <<<

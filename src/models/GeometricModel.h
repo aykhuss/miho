@@ -18,11 +18,13 @@ class GeometricModel : public Model {
     for (auto i = 1; i < _n_orders; ++i) {
       _delta.push_back((sigma[i] - sigma[i - 1]) / sigma[0]);
     }
-    // std::cout << "# GeometricModel: " << _n_orders << " \n";
-    for (auto i=0; i<sigma.size();++i) {
-      // std::cout << "# > " << sigma[i] << ", " << _sigma[i] << ":\t" <<
-      // _delta[i] << std::endl;
-    }
+    // // std::cout << "# GeometricModel: " << _n_orders << " \n";
+    // for (auto i=0; i<sigma.size();++i) {
+    //   // std::cout << "# > " << sigma[i] << ", " << _sigma[i] << ":\t" <<
+    //   // _delta[i] << std::endl;
+    // }
+    // cache the denominator (const for fixed delta's)
+    _pdf_den = pdf_delta__mu(_delta);
   }
 
   double sigma(int order) const { return _sigma.at(order); };
@@ -46,6 +48,7 @@ class GeometricModel : public Model {
  protected:
   std::vector<double> _sigma;
   std::vector<double> _delta;
+  double _pdf_den;
   // parameters of the model
   double _epsilon;  // Eq.(4.8)
   int _omega;       // Eq.(4.9) : assumes integer

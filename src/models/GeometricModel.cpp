@@ -16,14 +16,8 @@ double GeometricModel::pdf(const double& val) const {
 
 double GeometricModel::pdf_delta___delta_mu(const double& delta_next) const {
   // Eq.(4.10) : assumes j == 1
-  std::vector<double> delta = _delta;
-  double pdf_den = pdf_delta__mu(delta);
-  // std::cout << "pdf_den = " << pdf_den << std::endl;
-  delta.push_back(delta_next);
-  double pdf_num = pdf_delta__mu(delta);
-  // std::cout << "pdf_num = " << pdf_num << "[" << delta_next << "]" <<
-  // std::endl;
-  return pdf_num / pdf_den;
+  double pdf_num = pdf_delta__mu(delta_next);
+  return pdf_num / _pdf_den;
 }
 
 double GeometricModel::pdf_delta__mu(const std::vector<double>& delta) const {
@@ -39,7 +33,7 @@ double GeometricModel::pdf_delta__mu(const std::vector<double>& delta) const {
     for (auto j = 0; j <= _omega; ++j) {
       double a_low = std::min(1., a[k + 1]);
       double a_upp = std::min(1., a[k]);
-      if (a_low == a_upp) continue;
+      if (is_approx(a_low, a_upp)) continue;
       if (a_low > a_upp) {
         std::cout << "invalid a list for k=" << k << ": "
                   << "a_low = " << a_low << "[" << a[k + 1]

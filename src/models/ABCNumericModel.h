@@ -7,9 +7,9 @@
 
 namespace miho {
 
-class ABCModel : public Model {
+class ABCNumericModel : public Model {
  public:
-  ABCModel(const std::vector<double>& sigma)
+  ABCNumericModel(const std::vector<double>& sigma)
       : _sigma(sigma), _delta(), _epsilon(0.1), _xi(1.0), _omega(1) {
     _n_orders = sigma.size();
     _delta.reserve(_n_orders);
@@ -18,12 +18,14 @@ class ABCModel : public Model {
     for (auto i = 1; i < _n_orders; ++i) {
       _delta.push_back((sigma[i] - sigma[i - 1]) / sigma[0]);
     }
-    // std::cout << "# ABCModel: " << _n_orders << " \n";
+    // std::cout << "# ABCNumericModel: " << _n_orders << " \n";
     // for (auto i = 0; i < sigma.size(); ++i) {
     //   std::cout << "# > " << sigma[i] << ", " << _sigma[i] << ":\t" <<
     //   _delta[i]
     //             << std::endl;
     // }
+    // cache the denominator (const for fixed delta's)
+    _pdf_den = pdf_delta__mu(_delta);
   }
 
   double sigma(int order) const { return _sigma.at(order); };
@@ -38,33 +40,14 @@ class ABCModel : public Model {
   inline double pdf_delta__mu() const { return pdf_delta__mu(_delta); }
   double pdf_delta__mu(const double& delta_next) const;
 
-  static double a_integral(const double& a_lower, const double& a_upper,
-                           const double& alpha, const double& beta,
-                           const double& epsilon, int l, int i, int j, int m);
-  static double a_master(const double& p, const double& q, const double& r,
-                         const double& A, const double& B);
-  static double a_integral2(const double& a_lower, const double& a_upper,
-                            const double& alpha, int l, int i);
-
-  static double a_nintegral(const double& a_lower, const double& a_upper,
-                            const double& alpha, const double& beta,
-                            const double& epsilon, int l, int i, int j, int m);
-  static double a_nintegral2(const double& a_lower, const double& a_upper,
-                             const double& alpha, int l, int i);
-
  protected:
   std::vector<double> _sigma;
   std::vector<double> _delta;
+  double _pdf_den;
   // parameters of the model
   double _epsilon;
   double _xi;
   int _omega;
-
- private:
-  // duplicate the infrastructure for the brute-force 1D integration until I
-  // have the analytic result
-  double a_integrand(const double& a, const std::vector<double>& delta) const;
-  double a_nint(const std::vector<double>& delta) const;
 };
 
 }  // namespace miho

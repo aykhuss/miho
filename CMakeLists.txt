@@ -4,7 +4,7 @@ project(
   miho
   VERSION 0.1
   DESCRIPTION "A simple tool to compue theory uncertainties"
-  LANGUAGES CXX)
+  LANGUAGES Fortran C CXX)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -16,6 +16,14 @@ if (NOT CMAKE_BUILD_TYPE)
         #set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+
+if (NOT CMAKE_INSTALL_PREFIX)
+        # default: in the project folder
+        set(CMAKE_INSTALL_PREFIX ${PROJECT_SOURCE_DIR})
+endif()
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_INSTALL_PREFIX}/bin)
+message(STATUS "miho will be installed to ${CMAKE_INSTALL_PREFIX}")
+
 
 # if(NOT EXISTS "extern/CLI11/CMakeLists.txt"
 # OR NOT EXISTS "extern/fmt/CMakeLists.txt")
@@ -44,7 +52,7 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
   if(Doxygen_FOUND)
     add_subdirectory(docs)
   else()
-    message(STATUS "Doxygen not found, not building docs")
+    # message(STATUS "Doxygen not found, not building docs")
   endif()
 endif()
 
@@ -63,9 +71,10 @@ endif()
 # FetchContent_MakeAvailable(fmtlib)
 # # Adds fmt::fmt
 
-
 add_subdirectory("extern/CLI11")
 add_subdirectory("extern/fmt")
+add_subdirectory("extern/cubature")
+add_subdirectory("extern/adsj_v1_0")
 
 add_subdirectory(src)
 
