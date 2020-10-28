@@ -4,3 +4,6 @@
 [submodule "extern/fmt"]
 	path = extern/fmt
 	url = https://github.com/fmtlib/fmt.git
+[submodule "extern/cubature"]
+	path = extern/cubature
+	url = https://github.com/stevengj/cubature.git
