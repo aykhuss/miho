@@ -4,7 +4,8 @@ project(
   miho
   VERSION 0.1
   DESCRIPTION "A simple tool to compue theory uncertainties"
-  LANGUAGES Fortran C CXX)
+  LANGUAGES C CXX)
+  # LANGUAGES Fortran C CXX)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -97,7 +98,7 @@ endif()
 add_subdirectory("extern/CLI11")
 add_subdirectory("extern/fmt")
 add_subdirectory("extern/cubature")
-add_subdirectory("extern/adsj_v1_0")
+#add_subdirectory("extern/adsj_v1_0")
 
 add_subdirectory(src)
 

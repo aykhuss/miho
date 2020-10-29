@@ -26,5 +26,5 @@ target_link_libraries(models
   PRIVATE
   fmt::fmt
   cubature
-  adsj
+  # adsj
 )

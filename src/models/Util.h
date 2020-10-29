@@ -2,10 +2,10 @@
 
 #include <vector>
 
-extern "C" double r2f1_adsj(const double& a, const double& b, const double& c,
-                            const double& z);
-extern "C" double rf1_adsj(const double& a, const double& b1, const double& b2,
-                           const double& c, const double& x, const double& y);
+// extern "C" double r2f1_adsj(const double& a, const double& b, const double& c,
+//                             const double& z);
+// extern "C" double rf1_adsj(const double& a, const double& b1, const double& b2,
+//                            const double& c, const double& x, const double& y);
 
 namespace miho {
 

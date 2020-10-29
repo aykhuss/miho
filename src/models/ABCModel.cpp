@@ -250,7 +250,9 @@ double ABCModel::a_master(const double& p, const double& q, const double& r,
   double opB = 1. + B;
   double omAr = (1. - std::pow(A, r));
   return std::pow(opB, q) * omAr / r *
-         rf1_adsj(1., (r - p - 1.) / r, -q, 2., omAr, B * omAr / opB);
+         appell_F1(1., (r - p - 1.) / r, -q, 2., omAr, B * omAr / opB);
+  // return std::pow(opB, q) * omAr / r *
+  //        rf1_adsj(1., (r - p - 1.) / r, -q, 2., omAr, B * omAr / opB);
 }
 
 double ABCModel::a_integral2(const double& a_lower, const double& a_upper,
