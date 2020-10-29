@@ -1,7 +1,11 @@
 [submodule "extern/CLI11"]
 	path = extern/CLI11
 	url = https://github.com/CLIUtils/CLI11.git
+
 [submodule "extern/fmt"]
 	path = extern/fmt
 	url = https://github.com/fmtlib/fmt.git
 
+[submodule "extern/cubature"]
+	path = extern/cubature
+	url = git@github.com:aykhuss/cubature.git
