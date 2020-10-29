@@ -36,6 +36,14 @@ that should create a `bin` folder containing the `miho` executable in the main p
 
 Run `miho -h` to get a help display. 
 
+* probability distribution: get the x-y value pairs for the PDF by adding `--pdf` anywhere before the model specification
+* use the format string passed via `--format 'the format string'` to control the information you want and how it is displayed, e.g. by default the format is `'{median} {dob68_low} {dob68_upp}'`. The list of available placeholders are:
+    - `{median}`: the median of the distribution
+    - `{dob68_low}` & `{dob68_upp}`: the lower and upper edges of the 68% degree-of-belief interval
+    - `{dob95_low}` & `{dob95_upp}`: the lower and upper edges of the 95% degree-of-belief interval
+    - `{mean}`: the mean of the distribution
+    - `{stdev}`: the standard deviation of the distribution
+
 maybe use logging at some point:
 * https://github.com/gabime/spdlog
 * https://github.com/SergiusTheBest/plog

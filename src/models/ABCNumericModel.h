@@ -31,6 +31,20 @@ class ABCNumericModel : public Model {
   double sigma(int order) const { return _sigma.at(order); };
   double pdf(const double& val) const;
 
+  // setters
+  inline void set_epsilon(const double& epsilon) {
+    _epsilon = epsilon;
+    _pdf_den = pdf_delta__mu(_delta);
+  }
+  inline void set_xi(const double& xi) {
+    _xi = xi;
+    _pdf_den = pdf_delta__mu(_delta);
+  }
+  inline void set_omega(int omega) {
+    _omega = omega;
+    _pdf_den = pdf_delta__mu(_delta);
+  }
+
   // additional public member functions
   inline double delta_next(const double& sigma_next) const {
     return (sigma_next - _sigma.back()) / _sigma.front();
@@ -45,9 +59,9 @@ class ABCNumericModel : public Model {
   std::vector<double> _delta;
   double _pdf_den;
   // parameters of the model
-  double _epsilon;
-  double _xi;
   int _omega;
+  double _xi;
+  double _epsilon;
 };
 
 }  // namespace miho

@@ -63,9 +63,9 @@ double ABCNumericModel::pdf_delta___delta_mu(const double& delta_next) const {
 
 double ABCNumericModel::pdf_delta__mu(const std::vector<double>& delta) const {
   // cubature library
-  const size_t maxEval = 1000;
+  const size_t maxEval = 2000;
   const double reqAbsError = 0.;
-  const double reqRelError = 0.01;
+  const double reqRelError = 0.007;
   // a = x[0]
   // b = x[1] / (1-x[1]^2)  =>  Jac = (1+x[1]^2) / (1-x[1]^2)^2
   const double xmin[2] = {0., -1.};
