@@ -29,6 +29,11 @@
 # build stuff
 *build*
 
+#
+bin/
+lib/
+include/
+
 # backups
 *~
 
