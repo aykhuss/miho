@@ -32,10 +32,10 @@ int main(int argc, char const* argv[]) {
   CLI::Option* app_format =
       app.add_option("--format", format_string, "Output formatting string.");
   size_t nmax = 1000;
-  app.add_option("--nmax", nmax, "Set the maximum number of PDF evaliations.");
+  app.add_option("--nmax", nmax, "Set the maximum number of PDF evaluations (default: 1000).");
   double accuracy = 0.005;  // default: 0.5%
   app.add_option("--accuracy", accuracy,
-                 "Set the target accuracy of the integration.");
+                 "Set the relative target accuracy of the integration (default: 0.5%).");
   std::string file_name;
   CLI::Option* app_file =
       app.add_option("--file,-f", file_name, "Provide an input data file.");
