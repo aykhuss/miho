@@ -17,12 +17,12 @@ if (NOT CMAKE_BUILD_TYPE)
 endif()
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
-if (NOT CMAKE_INSTALL_PREFIX)
-        # default: in the project folder
-        set(CMAKE_INSTALL_PREFIX ${PROJECT_SOURCE_DIR})
-endif()
-set(EXECUTABLE_OUTPUT_PATH ${CMAKE_INSTALL_PREFIX}/bin)
-message(STATUS "miho will be installed to ${CMAKE_INSTALL_PREFIX}")
+#if (NOT CMAKE_INSTALL_PREFIX)
+#        # default: in the project folder
+#        set(CMAKE_INSTALL_PREFIX ${PROJECT_SOURCE_DIR})
+#endif()
+#set(EXECUTABLE_OUTPUT_PATH ${CMAKE_INSTALL_PREFIX}/bin)
+#message(STATUS "miho will be installed to ${CMAKE_INSTALL_PREFIX}")
 
 
 # if(NOT EXISTS "extern/CLI11/CMakeLists.txt"
