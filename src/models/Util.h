@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <vector>
 
 // extern "C" double r2f1_adsj(const double& a, const double& b, const double& c,
