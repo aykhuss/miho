@@ -7,8 +7,8 @@ add_subdirectory(models)
 target_link_libraries(miho
   PUBLIC
   fmt::fmt
-	PRIVATE
-	models
+  PRIVATE
+  models
   CLI11::CLI11
 )
 
@@ -28,11 +28,6 @@ set_target_properties(miho
     BUILD_WITH_INSTALL_RPATH OFF
     INSTALL_RPATH "${message_RPATH}"
     INSTALL_RPATH_USE_LINK_PATH ON
-  )
-
-install(TARGETS miho models cubature
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib
 )
 
 install(
@@ -52,5 +47,5 @@ install(
   PUBLIC_HEADER
     DESTINATION ${INSTALL_INCLUDEDIR}/miho
     COMPONENT dev
-  )
+)
 

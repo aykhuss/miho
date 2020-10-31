@@ -26,23 +26,35 @@ int main(int argc, char const* argv[]) {
   app.footer("[powered by CERN QCD coffee]");
 
   //----- global settings for all models
-  bool flag_pdf = false;
-  app.add_flag("--pdf", flag_pdf, "Print out the probability distribution.");
+  //> output format
   std::string format_string{"{median} {dob68_low} {dob68_upp} \n"};
   CLI::Option* app_format =
       app.add_option("--format", format_string, "Output formatting string.");
-  size_t nmax = 1000;
-  app.add_option("--nmax", nmax, "Set the maximum number of PDF evaluations (default: 1000).");
+  //> PDF settings
+  bool flag_pdf = false;
+  app.add_flag("--pdf", flag_pdf, "Print out the probability distribution.");
+  size_t nmax = 2000;
+  app.add_option("--nmax", nmax, "Set the maximum number of PDF evaluations (default: 5000).");
   double accuracy = 0.005;  // default: 0.5%
   app.add_option("--accuracy", accuracy,
                  "Set the relative target accuracy of the integration (default: 0.5%).");
+  //> scale marginalisation settings
+  std::vector<double> scl1d;
+  CLI::Option* app_scl1d =
+      app.add_option("--scl1d", scl1d, "A list of scale factors.");
+  std::vector<std::pair<double, double>> scl2d;
+  CLI::Option* app_scl2d =
+      app.add_option("--scl2d", scl2d, "A list of pairs of scale factors.");
+  app_scl1d->excludes(app_scl2d);
+  app_scl2d->excludes(app_scl1d);
+  //> file as input
   std::string file_name;
   CLI::Option* app_file =
       app.add_option("--file,-f", file_name, "Provide an input data file.");
 
   //----- subcommands to choose the model
-  app.require_subcommand(/* min */ 0, /* max */ 1);
-  // standard geometric
+  app.require_subcommand(/* min */ 1, /* max */ 1);
+  //> standard geometric
   CLI::App* app_gm = app.add_subcommand("geo", "Use the GeometricModel.");
   int gm_omg = 1;
   app_gm->add_option("--omega", gm_omg,
@@ -50,7 +62,7 @@ int main(int argc, char const* argv[]) {
   double gm_eps = 0.1;
   app_gm->add_option("--epsilon", gm_eps,
                      "Model parameter for the prior of 'c'.");
-  // ABC model
+  //> ABC model
   CLI::App* app_abc = app.add_subcommand("abc", "Use the ABCModel.");
   int abc_omg = 1;
   app_abc->add_option("--omega", abc_omg,

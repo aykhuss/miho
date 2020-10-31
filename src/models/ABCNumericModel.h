@@ -10,7 +10,12 @@ namespace miho {
 class ABCNumericModel : public Model {
  public:
   ABCNumericModel(const std::vector<double>& sigma)
-      : _sigma(sigma), _delta(), _epsilon(0.1), _xi(1.0), _omega(1) {
+      : _sigma(sigma),
+        _delta(),
+        _q_pdf_den(false),
+        _omega(1),
+        _xi(1.0),
+        _epsilon(0.1) {
     _n_orders = sigma.size();
     _delta.reserve(_n_orders);
     // Eq.(3.4)
@@ -24,8 +29,6 @@ class ABCNumericModel : public Model {
     //   _delta[i]
     //             << std::endl;
     // }
-    // cache the denominator (const for fixed delta's)
-    _pdf_den = pdf_delta__mu(_delta);
   }
 
   double sigma(int order) const { return _sigma.at(order); };
@@ -34,15 +37,15 @@ class ABCNumericModel : public Model {
   // setters
   inline void set_epsilon(const double& epsilon) {
     _epsilon = epsilon;
-    _pdf_den = pdf_delta__mu(_delta);
+    _q_pdf_den = false;
   }
   inline void set_xi(const double& xi) {
     _xi = xi;
-    _pdf_den = pdf_delta__mu(_delta);
+    _q_pdf_den = false;
   }
   inline void set_omega(int omega) {
     _omega = omega;
-    _pdf_den = pdf_delta__mu(_delta);
+    _q_pdf_den = false;
   }
 
   // additional public member functions
@@ -57,7 +60,9 @@ class ABCNumericModel : public Model {
  protected:
   std::vector<double> _sigma;
   std::vector<double> _delta;
-  double _pdf_den;
+  // cache denominator
+  mutable bool _q_pdf_den;
+  mutable double _pdf_den;
   // parameters of the model
   int _omega;
   double _xi;

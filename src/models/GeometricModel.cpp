@@ -17,6 +17,10 @@ double GeometricModel::pdf(const double& val) const {
 double GeometricModel::pdf_delta___delta_mu(const double& delta_next) const {
   // Eq.(4.10) : assumes j == 1
   double pdf_num = pdf_delta__mu(delta_next);
+  if (!_q_pdf_den) {
+    _pdf_den = pdf_delta__mu(_delta);
+    _q_pdf_den = true;
+  }
   return pdf_num / _pdf_den;
 }
 

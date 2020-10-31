@@ -21,15 +21,17 @@ int ab_integrand(unsigned ndim, const double* x, void* fdata, unsigned fdim,
                  double* fval) {
   if (ndim != 2) return 1;
   if (fdim != 1) return 1;
-  const double omx1sq = 1. - x[1] * x[1];
+  fval[0] = 0.;
+  //const double omx1sq = 1. - x[1] * x[1];
+  const double omx1sq = (1. - x[1]) * (1. + x[1]);  // more stable
   const double a = x[0];
   const double b = x[1] / omx1sq;
-  double result = (1. + x[1] * x[1]) / omx1sq / omx1sq;  // Jac for b-mapping
+  double result = (1. + x[1] * x[1]) / (omx1sq * omx1sq);  // Jac for b-mapping
   const ABCdata* abc = (ABCdata*)fdata;
   double m = abc->delta.size() - 1.;  // counting starts at 0
   // prefactor
-  result *= abc->epsilon * (1. + abc->omega) / std::pow(2., m + 1.) / abc->xi /
-            (m + 1. + abc->epsilon);
+  result *= abc->epsilon * (1. + abc->omega) /
+            (std::pow(2., m + 1.) * abc->xi * (m + 1. + abc->epsilon));
   // a-dependent piece
   result *= std::pow(1. - a, abc->omega) / std::pow(a, m * (m + 1.) / 2.);
   // b-dependent piece (max function)
@@ -42,6 +44,7 @@ int ab_integrand(unsigned ndim, const double* x, void* fdata, unsigned fdim,
   }
   result /= std::pow(max_val, m + 1. + abc->epsilon);
   // done.
+  if (!std::isfinite(result)) return 0;
   fval[0] = result;
   return 0;  // success
 }
@@ -58,6 +61,10 @@ double ABCNumericModel::pdf(const double& val) const {
 double ABCNumericModel::pdf_delta___delta_mu(const double& delta_next) const {
   // Eq.(4.10) : assumes j == 1
   double pdf_num = pdf_delta__mu(delta_next);
+  if (!_q_pdf_den) {
+    _pdf_den = pdf_delta__mu(_delta);
+    _q_pdf_den = true;
+  }
   return pdf_num / _pdf_den;
 }
 
@@ -77,6 +84,7 @@ double ABCNumericModel::pdf_delta__mu(const std::vector<double>& delta) const {
   hcubature(1, ab_integrand, &fdata, 2, xmin, xmax, maxEval, reqAbsError,
             reqRelError, ERROR_INDIVIDUAL, val, err);
 
+  if (!std::isfinite(val[0])) return 0.;
   return val[0];
 }
 
