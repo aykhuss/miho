@@ -16,6 +16,7 @@
 #include "Scale1DGeometricModel.h"
 #include "Scale1DModel.h"
 #include "Scale2DGeometricModel.h"
+#include "Scale2DModel.h"
 
 // fwd declare some functions
 std::vector<double> parse_input(std::istream& data_stream);
@@ -134,6 +135,33 @@ int main(int argc, char const* argv[]) {
         }
       }
       cli_model = scl1d;
+    } else if (*app_scl2d) {
+      //### 2D scale
+      fmt::print("entered app_scl2d\n");
+      std::shared_ptr<miho::Scale2DModel> scl2d =
+          std::shared_ptr<miho::Scale2DModel>(new miho::Scale2DModel());
+      scl2d->use_gauss_legendre(scl_gl);
+      if (*app_file) {
+        std::vector<std::vector<double>> data = parse_data_file(file_name);
+        for (std::vector<double> record : data) {
+          std::pair<double, double> scl{record.at(0), record.at(1)};
+          std::vector<double> sigma(record.begin() + 2, record.end());
+          gm.set_sigma(sigma);
+          scl2d->add_model(scl, std::make_shared<miho::GeometricModel>(gm));
+        }
+      } else {
+        for (const auto& scl : scl2_vec) {
+          fmt::print(
+              "# Enter XS[{}×μ₀,{}×μ₀] values @ LO NLO ... separated by "
+              "spaces: "
+              "\n",
+              scl.first, scl.second);
+          std::vector<double> sigma = parse_input(std::cin);
+          gm.set_sigma(sigma);
+          scl2d->add_model(scl, std::make_shared<miho::GeometricModel>(gm));
+        }
+      }
+      cli_model = scl2d;
     } else {
       //### just numbers
       std::vector<double> sigma;
@@ -186,6 +214,33 @@ int main(int argc, char const* argv[]) {
         }
       }
       cli_model = scl1d;
+    } else if (*app_scl2d) {
+      //### 2D scale
+      fmt::print("entered app_scl2d\n");
+      std::shared_ptr<miho::Scale2DModel> scl2d =
+          std::shared_ptr<miho::Scale2DModel>(new miho::Scale2DModel());
+      scl2d->use_gauss_legendre(scl_gl);
+      if (*app_file) {
+        std::vector<std::vector<double>> data = parse_data_file(file_name);
+        for (std::vector<double> record : data) {
+          std::pair<double, double> scl{record.at(0), record.at(1)};
+          std::vector<double> sigma(record.begin() + 2, record.end());
+          abc.set_sigma(sigma);
+          scl2d->add_model(scl, std::make_shared<miho::ABCNumericModel>(abc));
+        }
+      } else {
+        for (const auto& scl : scl2_vec) {
+          fmt::print(
+              "# Enter XS[{}×μ₀,{}×μ₀] values @ LO NLO ... separated by "
+              "spaces: "
+              "\n",
+              scl.first, scl.second);
+          std::vector<double> sigma = parse_input(std::cin);
+          abc.set_sigma(sigma);
+          scl2d->add_model(scl, std::make_shared<miho::ABCNumericModel>(abc));
+        }
+      }
+      cli_model = scl2d;
     } else {
       //### just numbers
       std::vector<double> sigma;

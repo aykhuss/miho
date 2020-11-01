@@ -8,6 +8,7 @@ target_sources(models
     ABCModel.cpp
     ABCNumericModel.cpp
     Scale1DModel.cpp
+    Scale2DModel.cpp
     Scale1DGeometricModel.cpp
     Scale2DGeometricModel.cpp
   PUBLIC
@@ -17,6 +18,7 @@ target_sources(models
     ${CMAKE_CURRENT_LIST_DIR}/ABCModel.h
     ${CMAKE_CURRENT_LIST_DIR}/ABCNumericModel.h
     ${CMAKE_CURRENT_LIST_DIR}/Scale1DModel.h
+    ${CMAKE_CURRENT_LIST_DIR}/Scale2DModel.h
     ${CMAKE_CURRENT_LIST_DIR}/Scale1DGeometricModel.h
     ${CMAKE_CURRENT_LIST_DIR}/Scale2DGeometricModel.h
   )
