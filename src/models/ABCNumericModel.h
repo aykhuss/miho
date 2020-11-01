@@ -9,6 +9,13 @@ namespace miho {
 
 class ABCNumericModel : public Model {
  public:
+  ABCNumericModel()
+      : _sigma(),
+        _delta(),
+        _q_pdf_den(false),
+        _omega(1),
+        _xi(1.0),
+        _epsilon(0.1) {}
   ABCNumericModel(const std::vector<double>& sigma)
       : _sigma(sigma),
         _delta(),
@@ -16,19 +23,27 @@ class ABCNumericModel : public Model {
         _omega(1),
         _xi(1.0),
         _epsilon(0.1) {
-    _n_orders = sigma.size();
+    init();
+  }
+
+  inline void set_sigma(const std::vector<double>& sigma) {
+    _sigma = sigma;
+    _q_pdf_den = false;
+    init();
+  }
+
+  void init() {
+    // std::cout << "ABCNumericModel - init - " << _omega << ", " << _epsilon
+    //           << std::endl;
+    // update everything after changing _sigma
+    _n_orders = _sigma.size();
+    _delta.clear();
     _delta.reserve(_n_orders);
     // Eq.(3.4)
-    _delta.push_back(1.);  // normalised w.r.t. LO <-> sigma[0]
+    _delta.push_back(1.);  // normalised w.r.t. LO <-> _sigma[0]
     for (auto i = 1; i < _n_orders; ++i) {
-      _delta.push_back((sigma[i] - sigma[i - 1]) / sigma[0]);
+      _delta.push_back((_sigma[i] - _sigma[i - 1]) / _sigma[0]);
     }
-    // std::cout << "# ABCNumericModel: " << _n_orders << " \n";
-    // for (auto i = 0; i < sigma.size(); ++i) {
-    //   std::cout << "# > " << sigma[i] << ", " << _sigma[i] << ":\t" <<
-    //   _delta[i]
-    //             << std::endl;
-    // }
   }
 
   double sigma(int order) const { return _sigma.at(order); };
