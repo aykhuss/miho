@@ -14,7 +14,7 @@ class Scale2DModel : public Model {
   // use Move eventually!
   void add_model(const std::pair<double, double> fac_mu,
                  std::shared_ptr<miho::Model> model) {
-    std::cout << "# add_model: _n_orders = " << _n_orders << std::endl;
+    // std::cout << "# add_model: _n_orders = " << _n_orders << std::endl;
     _scale_models.insert(std::pair<Scale2D, std::shared_ptr<miho::Model>>(
         Scale2D(fac_mu.first, fac_mu.second), model));
     if (_n_orders == 0) {

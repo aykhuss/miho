@@ -8,6 +8,7 @@
 #include <iostream>
 #include <limits>
 #include <list>
+#include <memory>
 #include <stdexcept>
 
 namespace miho {

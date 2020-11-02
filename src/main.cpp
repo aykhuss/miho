@@ -5,6 +5,7 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <regex>
 #include <string>
 #include <vector>
@@ -43,12 +44,12 @@ int main(int argc, char const* argv[]) {
       "--accuracy", accuracy,
       "Set the relative target accuracy of the integration (default: 0.5%).");
   //> scale marginalisation settings
-  std::vector<double> scl1d;
+  std::vector<double> vec_scl1d;
   CLI::Option* app_scl1d =
-      app.add_option("--scl1d", scl1d, "A list of scale factors.");
-  std::vector<std::pair<double, double>> scl2d;
+      app.add_option("--scl1d", vec_scl1d, "A list of scale factors.");
+  std::vector<std::pair<double, double>> vec_scl2d;
   CLI::Option* app_scl2d =
-      app.add_option("--scl2d", scl2d, "A list of pairs of scale factors.");
+      app.add_option("--scl2d", vec_scl2d, "A list of pairs of scale factors.");
   bool scl_gl = false;
   app.add_flag("--gl", scl_gl, "Gauss–Legendre");
   // app_scl_gl->multi_option_policy(CLI::MultiOptionPolicy::Throw);
@@ -112,7 +113,7 @@ int main(int argc, char const* argv[]) {
 
     if (*app_scl1d) {
       //### 1D scale
-      fmt::print("entered app_scl1d\n");
+      // fmt::print("entered app_scl1d\n");
       std::shared_ptr<miho::Scale1DModel> scl1d =
           std::shared_ptr<miho::Scale1DModel>(new miho::Scale1DModel());
       scl1d->use_gauss_legendre(scl_gl);
@@ -125,7 +126,7 @@ int main(int argc, char const* argv[]) {
           scl1d->add_model(scl, std::make_shared<miho::GeometricModel>(gm));
         }
       } else {
-        for (const auto& scl : scl1_vec) {
+        for (const auto& scl : vec_scl1d) {
           fmt::print(
               "# Enter XS[{}×μ₀] values @ LO NLO ... separated by spaces: \n",
               scl);
@@ -137,7 +138,7 @@ int main(int argc, char const* argv[]) {
       cli_model = scl1d;
     } else if (*app_scl2d) {
       //### 2D scale
-      fmt::print("entered app_scl2d\n");
+      // fmt::print("entered app_scl2d\n");
       std::shared_ptr<miho::Scale2DModel> scl2d =
           std::shared_ptr<miho::Scale2DModel>(new miho::Scale2DModel());
       scl2d->use_gauss_legendre(scl_gl);
@@ -150,7 +151,7 @@ int main(int argc, char const* argv[]) {
           scl2d->add_model(scl, std::make_shared<miho::GeometricModel>(gm));
         }
       } else {
-        for (const auto& scl : scl2_vec) {
+        for (const auto& scl : vec_scl2d) {
           fmt::print(
               "# Enter XS[{}×μ₀,{}×μ₀] values @ LO NLO ... separated by "
               "spaces: "
@@ -191,7 +192,7 @@ int main(int argc, char const* argv[]) {
 
     if (*app_scl1d) {
       //### 1D scale
-      fmt::print("entered app_scl1d\n");
+      // fmt::print("entered app_scl1d\n");
       std::shared_ptr<miho::Scale1DModel> scl1d =
           std::shared_ptr<miho::Scale1DModel>(new miho::Scale1DModel());
       scl1d->use_gauss_legendre(scl_gl);
@@ -204,7 +205,7 @@ int main(int argc, char const* argv[]) {
           scl1d->add_model(scl, std::make_shared<miho::ABCNumericModel>(abc));
         }
       } else {
-        for (const auto& scl : scl1_vec) {
+        for (const auto& scl : vec_scl1d) {
           fmt::print(
               "# Enter XS[{}×μ₀] values @ LO NLO ... separated by spaces: \n",
               scl);
@@ -216,7 +217,7 @@ int main(int argc, char const* argv[]) {
       cli_model = scl1d;
     } else if (*app_scl2d) {
       //### 2D scale
-      fmt::print("entered app_scl2d\n");
+      // fmt::print("entered app_scl2d\n");
       std::shared_ptr<miho::Scale2DModel> scl2d =
           std::shared_ptr<miho::Scale2DModel>(new miho::Scale2DModel());
       scl2d->use_gauss_legendre(scl_gl);
@@ -229,7 +230,7 @@ int main(int argc, char const* argv[]) {
           scl2d->add_model(scl, std::make_shared<miho::ABCNumericModel>(abc));
         }
       } else {
-        for (const auto& scl : scl2_vec) {
+        for (const auto& scl : vec_scl2d) {
           fmt::print(
               "# Enter XS[{}×μ₀,{}×μ₀] values @ LO NLO ... separated by "
               "spaces: "

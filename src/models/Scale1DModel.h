@@ -14,7 +14,7 @@ class Scale1DModel : public Model {
   // use Move eventually!
   void add_model(
       const double& fac_mu, std::shared_ptr<miho::Model> model) {
-    std::cout << "# add_model: _n_orders = " << _n_orders << std::endl;
+    // std::cout << "# add_model: _n_orders = " << _n_orders << std::endl;
     _scale_models.insert(
         std::pair<Scale1D, std::shared_ptr<miho::Model>>(Scale1D(fac_mu), model));
     if (_n_orders == 0) {
