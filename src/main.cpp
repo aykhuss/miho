@@ -66,20 +66,21 @@ int main(int argc, char const* argv[]) {
   CLI::App* app_gm = app.add_subcommand("geo", "Use the GeometricModel.");
   int gm_omg = 1;
   app_gm->add_option("--omega", gm_omg,
-                     "Model parameter for the prior of 'a'.");
+                     "Model parameter for the prior of 'a' (default: 1).");
   double gm_eps = 0.1;
   app_gm->add_option("--epsilon", gm_eps,
-                     "Model parameter for the prior of 'c'.");
+                     "Model parameter for the prior of 'c' (default: 0.1).");
   //> ABC model
   CLI::App* app_abc = app.add_subcommand("abc", "Use the ABCModel.");
   int abc_omg = 1;
   app_abc->add_option("--omega", abc_omg,
-                      "Model parameter for the prior of 'a'.");
+                      "Model parameter for the prior of 'a' (default: 1).");
   double abc_xi = 1.;
-  app_abc->add_option("--xi", abc_xi, "Model parameter for the prior of 'b'.");
+  app_abc->add_option("--xi", abc_xi,
+                      "Model parameter for the prior of 'b' (default: 1.).");
   double abc_eps = 0.1;
   app_abc->add_option("--epsilon", abc_eps,
-                      "Model parameter for the prior of 'c'.");
+                      "Model parameter for the prior of 'c' (default: 0.1).");
   // 1D scale
   CLI::App* app_scl1gm = app.add_subcommand(
       "scale1d", "Use the GeometricModel marginalising over one scale.");
