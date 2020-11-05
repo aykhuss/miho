@@ -430,9 +430,19 @@ void print_format(std::string format_string,
   if (std::regex_search(format_string, std::regex("\\{mean\\}")) ||
       std::regex_search(format_string, std::regex("\\{stdev\\}"))) {
     double mean = model->mean();  // first compute the mean o recycle adaption
-    double stdev = model->stdev();
     format_arg_list.push_back(fmt::arg("mean", mean));
+  }
+  if (std::regex_search(format_string, std::regex("\\{stdev\\}"))) {
+    double stdev = model->stdev();
     format_arg_list.push_back(fmt::arg("stdev", stdev));
   }
+  //> maybe cache mean to save time for stdev?
+  // if (std::regex_search(format_string, std::regex("\\{mean\\}")) ||
+  //     std::regex_search(format_string, std::regex("\\{stdev\\}"))) {
+  //   double mean = model->mean();  // first compute the mean o recycle adaption
+  //   double stdev = model->stdev();
+  //   format_arg_list.push_back(fmt::arg("mean", mean));
+  //   format_arg_list.push_back(fmt::arg("stdev", stdev));
+  // }
   fmt::vprint(format_string + "\n", format_arg_list);
 }

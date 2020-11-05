@@ -17,7 +17,7 @@ bool Model::node_exists(const Node& n) {
 
 // very naive importance sampling to integrate over the pdf.
 void Model::adapt_integration(std::function<double(double)> func) {
-  // std::cout << "integrate at order " << _n_orders << "\n";
+  // std::cout << "\n#integrate at order " << _n_orders << "\n";
   // find three nodes to seed the integration
   double min_sig = -1.;
   double max_sig = -1.;
@@ -27,12 +27,12 @@ void Model::adapt_integration(std::function<double(double)> func) {
     if ((max_sig < 0.) || (sig > max_sig)) max_sig = sig;
   }
   double integrate_center =
-      sigma() * (1. + std::numeric_limits<double>::epsilon());
+      sigma() * (1. + std::numeric_limits<float>::epsilon());
   double integrate_delta = (max_sig - min_sig) / 2.;
   if (integrate_delta < 0.1 * integrate_center)
     integrate_delta = 0.1 * integrate_center;
 
-  // std::cout << "# range: " << integrate_center << " +- " << integrate_delta
+  // std::cout << "#range: " << integrate_center << " +- " << integrate_delta
   //           << std::endl;
 
   Node nctr, nlow, nupp;
@@ -148,7 +148,7 @@ void Model::adapt_integration(std::function<double(double)> func) {
       // double check = 1.5 * std::fabs(jump) +
       //                std::fabs(region_old - region_new) * _nodes.size();
       double check = error;
-      if ((check / result) <= _target_accuracy) {
+      if (std::fabs(check / result) <= _target_accuracy) {
         // std::cout << "reached target accuracy: " << result << " +/- " << check
         //           << " [" << check / result << "/" << _target_accuracy
         //           << "] in " << _nodes.size() << " steps\n";
