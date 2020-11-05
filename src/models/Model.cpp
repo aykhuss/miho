@@ -19,18 +19,18 @@ bool Model::node_exists(const Node& n) {
 void Model::adapt_integration(std::function<double(double)> func) {
   // std::cout << "\n#integrate at order " << _n_orders << "\n";
   // find three nodes to seed the integration
-  double min_sig = -1.;
-  double max_sig = -1.;
-  for (auto i_ord = 0; i_ord < _n_orders; ++i_ord) {
+  double min_sig = sigma(0);
+  double max_sig = sigma(0);
+  for (auto i_ord = 1; i_ord < _n_orders; ++i_ord) {
     double sig = sigma(i_ord);
-    if ((min_sig < 0.) || (sig < min_sig)) min_sig = sig;
-    if ((max_sig < 0.) || (sig > max_sig)) max_sig = sig;
+    if (sig < min_sig) min_sig = sig;
+    if (sig > max_sig) max_sig = sig;
   }
   double integrate_center =
       sigma() * (1. + std::numeric_limits<float>::epsilon());
-  double integrate_delta = (max_sig - min_sig) / 2.;
-  if (integrate_delta < 0.1 * integrate_center)
-    integrate_delta = 0.1 * integrate_center;
+  double integrate_delta = std::fabs(max_sig - min_sig) / 2.;
+  if (integrate_delta < 0.1 * std::fabs(integrate_center))
+    integrate_delta = 0.1 * std::fabs(integrate_center);
 
   // std::cout << "#range: " << integrate_center << " +- " << integrate_delta
   //           << std::endl;
@@ -129,6 +129,8 @@ void Model::adapt_integration(std::function<double(double)> func) {
     // fmt::print("#  >> new y = {}\n", n_new.y);
     node_pos = _nodes.insert(node_pos, n_new);
     // fmt::print("# new element: ({},{}) \n", n_new.x, n_new.y);
+
+    // std::cin.ignore();
 
     // check for accuracy termination condition
     if (!qextended) {

@@ -55,7 +55,7 @@ namespace miho {
 
 double ABCNumericModel::pdf(const double& val) const {
   // Eq.(3.14) : assumes j == 1
-  return pdf_delta___delta_mu(delta_next(val)) / _sigma.front();
+  return pdf_delta___delta_mu(delta_next(val)) / std::fabs(_sigma.front());
 }
 
 double ABCNumericModel::pdf_delta___delta_mu(const double& delta_next) const {
