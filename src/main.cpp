@@ -355,7 +355,7 @@ int main(int argc, char const* argv[]) {
   cli_model->set_accuracy(accuracy);
 
   if (flag_pdf) {
-    cli_model->print_nodes();
+    cli_model->print_pdf();
     if (*app_format) print_format(format_string, cli_model);
   } else {
     print_format(format_string, cli_model);

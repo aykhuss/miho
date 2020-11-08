@@ -1,15 +1,13 @@
 #pragma once
 
-#include "Util.h"
-
-// #include <fmt/format.h>
-
 #include <cmath>
 #include <iostream>
 #include <limits>
 #include <list>
 #include <memory>
 #include <stdexcept>
+
+#include "Util.h"
 
 namespace miho {
 
@@ -45,12 +43,10 @@ class Model {
     std::pair<double, double> dob = degree_of_belief_interval(0.5);
     return (dob.first + dob.second) / 2.;
   }
-  void print_nodes() {
+  void print_nodes(const std::string& prefix = "");
+  inline void print_pdf() {
     adapt_integration([](double x) { return 1.; });
-    for (const Node& n : _nodes) {
-      // fmt::print("{} {}\n", n.x, n.y);
-      std::cout << n.x << " \t " << n.y << std::endl;
-    }
+    print_nodes();
   }
   inline void set_max_nodes(size_t nmax) { _max_nodes = nmax; }
   inline void set_accuracy(const double& acc) { _target_accuracy = acc; }
@@ -58,7 +54,7 @@ class Model {
  protected:
   size_t _n_orders;
 
- private:
+ // private:
   struct Node {
     double x;
     double y;

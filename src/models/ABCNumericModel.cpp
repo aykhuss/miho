@@ -22,19 +22,31 @@ int ab_integrand(unsigned ndim, const double* x, void* fdata, unsigned fdim,
   if (ndim != 2) return 1;
   if (fdim != 1) return 1;
   fval[0] = 0.;
-  //const double omx1sq = 1. - x[1] * x[1];
-  const double omx1sq = (1. - x[1]) * (1. + x[1]);  // more stable
-  const double a = x[0];
-  const double b = x[1] / omx1sq;
-  double result = (1. + x[1] * x[1]) / (omx1sq * omx1sq);  // Jac for b-mapping
+  double result = 1.;
+
+  //> a mapping
+  double a = x[0];
+  // // for numerical stability
+  // if (miho::is_approx(a, 0.)) a = std::numeric_limits<double>::epsilon();
+
+  //> b-mapping
+  //>  (a) x/(1-x^2)
+  // // const double omx1sq = 1. - x[1] * x[1];
+  // const double omx1sq = (1. - x[1]) * (1. + x[1]);  // more stable
+  // const double b = x[1] / omx1sq;
+  // result *= (1. + x[1] * x[1]) / (omx1sq * omx1sq);  // Jac for b-mapping
+  //>  (b) arctanh(x)
+  const double b = std::atanh(x[1]);
+  result /= (1. - x[1]) * (1. + x[1]);  // Jac for b-mapping
+
   const ABCdata* abc = (ABCdata*)fdata;
   double m = abc->delta.size() - 1.;  // counting starts at 0
-  // prefactor
+  //> prefactor
   result *= abc->epsilon * (1. + abc->omega) /
             (std::pow(2., m + 1.) * abc->xi * (m + 1. + abc->epsilon));
-  // a-dependent piece
+  //> a-dependent piece
   result *= std::pow(1. - a, abc->omega) / std::pow(a, m * (m + 1.) / 2.);
-  // b-dependent piece (max function)
+  //> b-dependent piece (max function)
   double max_val = std::max(1., std::fabs(b) / abc->xi);
   double pow_a = 1.;  // accumulate a-powers
   for (auto i = 1; i <= m; ++i) {
@@ -42,9 +54,15 @@ int ab_integrand(unsigned ndim, const double* x, void* fdata, unsigned fdim,
     double dtest = std::fabs(abc->delta.at(i) / pow_a - b);
     if (dtest > max_val) max_val = dtest;
   }
+  if (miho::is_approx(max_val, 0.))
+    max_val = std::numeric_limits<double>::epsilon();
   result /= std::pow(max_val, m + 1. + abc->epsilon);
-  // done.
-  if (!std::isfinite(result)) return 0;
+  //> done.
+  if (!std::isfinite(result)) {
+    std::cerr << "#ab_integrand: problem for a = " << a << ", b = " << b
+              << std::endl;
+    return 0;
+  }
   fval[0] = result;
   return 0;  // success
 }
@@ -70,13 +88,18 @@ double ABCNumericModel::pdf_delta___delta_mu(const double& delta_next) const {
 
 double ABCNumericModel::pdf_delta__mu(const std::vector<double>& delta) const {
   // cubature library
-  const size_t maxEval = 2000;
+  const size_t maxEval = 10000;
   const double reqAbsError = 0.;
-  const double reqRelError = 0.007;
+  const double reqRelError = 0.003;
+  // const double reqRelError =
+  //     _target_accuracy;  // use same accuracy as the model
+
   // a = x[0]
-  // b = x[1] / (1-x[1]^2)  =>  Jac = (1+x[1]^2) / (1-x[1]^2)^2
-  const double xmin[2] = {0., -1.};
-  const double xmax[2] = {1., +1.};
+  // b <-> x[1] mapped to [-intfy, +infty]
+  const double xmin[2] = {+0. + std::numeric_limits<float>::epsilon(),
+                          -1. + std::numeric_limits<float>::epsilon()};
+  const double xmax[2] = {+1. - std::numeric_limits<float>::epsilon(),
+                          +1. - std::numeric_limits<float>::epsilon()};
   double val[1], err[1];
 
   ABCdata fdata = {delta, _epsilon, _xi, _omega};

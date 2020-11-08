@@ -15,22 +15,34 @@ bool Model::node_exists(const Node& n) {
   return false;
 }
 
+void Model::print_nodes(const std::string & prefix) {
+  for (const Node& n : _nodes) {
+    fmt::print(prefix + "{:<+20.14g} {:<+20.14g}\n", n.x, n.y);
+    // std::cout << n.x << " \t " << n.y << std::endl;
+  }
+}
+
 // very naive importance sampling to integrate over the pdf.
 void Model::adapt_integration(std::function<double(double)> func) {
   // std::cout << "\n#integrate at order " << _n_orders << "\n";
   // find three nodes to seed the integration
-  double min_sig = sigma(0);
-  double max_sig = sigma(0);
-  for (auto i_ord = 1; i_ord < _n_orders; ++i_ord) {
-    double sig = sigma(i_ord);
-    if (sig < min_sig) min_sig = sig;
-    if (sig > max_sig) max_sig = sig;
-  }
   double integrate_center =
       sigma() * (1. + std::numeric_limits<float>::epsilon());
-  double integrate_delta = std::fabs(max_sig - min_sig) / 2.;
-  if (integrate_delta < 0.1 * std::fabs(integrate_center))
-    integrate_delta = 0.1 * std::fabs(integrate_center);
+  double integrate_delta = 0.05 * std::fabs(integrate_center);  // 5%
+  if (_n_orders > 1) {
+    integrate_delta = std::fabs(integrate_center - sigma(_n_orders - 2));
+  }
+
+  // double min_sig = sigma(0);
+  // double max_sig = sigma(0);
+  // for (auto i_ord = 1; i_ord < _n_orders; ++i_ord) {
+  //   double sig = sigma(i_ord);
+  //   if (sig < min_sig) min_sig = sig;
+  //   if (sig > max_sig) max_sig = sig;
+  // }
+  // double integrate_delta = std::fabs(max_sig - min_sig) / 2.;
+  // if (integrate_delta < 0.1 * std::fabs(integrate_center))
+  //   integrate_delta = 0.1 * std::fabs(integrate_center);
 
   // std::cout << "#range: " << integrate_center << " +- " << integrate_delta
   //           << std::endl;
@@ -52,7 +64,7 @@ void Model::adapt_integration(std::function<double(double)> func) {
   if (node_exists(nctr) && node_exists(nlow) && node_exists(nupp)) {
     // we continue with the existing list
   } else {
-    // std::cout << "# clearing nodes cache!\n";
+    // std::cout << "#adapt_integration: clearing nodes cache!\n";
     _nodes.clear();
     _nodes.emplace_front(nctr);
     _nodes.emplace_front(nlow);
@@ -95,12 +107,13 @@ void Model::adapt_integration(std::function<double(double)> func) {
     bool qextended = false;
     double x0, dres0;
     Node n1, n2;
-    const double weight = 1e3;
+    const double weight = 1e2;
     // front:
     n1 = *_nodes.begin();
     n2 = *std::next(_nodes.begin());
-    x0 = n1.x - (n2.x - n1.x) * n1.y / (n2.y - n1.y) * weight;
-    if (x0 >= n1.x) x0 = n1.x - weight * (n2.x - n1.x);
+    // x0 = n1.x - (n2.x - n1.x) * n1.y / (n2.y - n1.y) * weight;
+    // if (x0 >= n1.x) x0 = n1.x - weight * (n2.x - n1.x);
+    x0 = n1.x - weight * (n2.x - n1.x);
     dres0 = std::fabs((n1.x - x0) * n1.y / 2.);
     if (dres0 > jump) {
       qextended = true;
@@ -112,8 +125,9 @@ void Model::adapt_integration(std::function<double(double)> func) {
     // back:
     n1 = *_nodes.rbegin();
     n2 = *std::next(_nodes.rbegin());
-    x0 = n1.x - (n2.x - n1.x) * n1.y / (n2.y - n1.y) * weight;
-    if (x0 <= n1.x) x0 = n1.x - weight * (n2.x - n1.x);
+    // x0 = n1.x - (n2.x - n1.x) * n1.y / (n2.y - n1.y) * weight;
+    // if (x0 <= n1.x) x0 = n1.x - weight * (n2.x - n1.x);
+    x0 = n1.x - weight * (n2.x - n1.x);
     dres0 = std::fabs((n1.x - x0) * n1.y / 2.);
     if (dres0 > jump) {
       qextended = true;
@@ -145,13 +159,14 @@ void Model::adapt_integration(std::function<double(double)> func) {
       //               (node_pos->y + std::prev(node_pos)->y) / 2.;
       // std::cout << "region_old: " << region_old << std::endl;
       // std::cout << "region_new: " << region_new << std::endl;
-      // double check = 1e4 * std::fabs(region_old - region_new) * _nodes.size();
-      // double check = 1.5 * std::fabs(jump); // empirical prefactor
-      // double check = 1.5 * std::fabs(jump) +
+      // double check = 1e4 * std::fabs(region_old - region_new) *
+      // _nodes.size(); double check = 1.5 * std::fabs(jump); // empirical
+      // prefactor double check = 1.5 * std::fabs(jump) +
       //                std::fabs(region_old - region_new) * _nodes.size();
       double check = error;
       if (std::fabs(check / result) <= _target_accuracy) {
-        // std::cout << "reached target accuracy: " << result << " +/- " << check
+        // std::cout << "reached target accuracy: " << result << " +/- " <<
+        // check
         //           << " [" << check / result << "/" << _target_accuracy
         //           << "] in " << _nodes.size() << " steps\n";
         break;
@@ -162,6 +177,9 @@ void Model::adapt_integration(std::function<double(double)> func) {
 
 double Model::integrate(std::function<double(double)> func) {
   adapt_integration(func);
+
+  // std::cout << "\n\n#integrate: adapted nodes!\n";
+  // print_nodes("#DEBUG: ");
 
   double result = 0.;
   for (auto it = _nodes.begin(); it != _nodes.end(); ++it) {
