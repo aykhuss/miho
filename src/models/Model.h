@@ -14,7 +14,11 @@ namespace miho {
 class Model {
  public:
   Model()
-      : _n_orders{0}, _nodes{}, _max_nodes{10000}, _target_accuracy{0.001} {}
+      : _n_orders{0},
+        _target_accuracy{0.001},
+        _nodes{},
+        _max_nodes{10000},
+        _min_nodes{10} {}
   virtual double sigma(int order) const = 0;
   inline double sigma() const { return sigma(_n_orders - 1); };
   inline size_t n_orders() const { return _n_orders; };
@@ -45,7 +49,7 @@ class Model {
   }
   void print_nodes(const std::string& prefix = "");
   inline void print_pdf() {
-    adapt_integration([](double x) { return 1.; });
+    adapt_integration(f_one, f_wgt);
     print_nodes();
   }
   inline void set_max_nodes(size_t nmax) { _max_nodes = nmax; }
@@ -53,19 +57,25 @@ class Model {
 
  protected:
   size_t _n_orders;
+  double _target_accuracy;
 
- // private:
+ private:
+  static const std::function<double(double)> f_one;
+  static const std::function<double(double)> f_wgt;
   struct Node {
     double x;
+    double sig;
+    double jac;
     double y;
   };
   bool node_exists(const Node& n);
 
-  void adapt_integration(std::function<double(double)> func);
+  void adapt_integration(std::function<double(double)> func,
+                         std::function<double(double)> rewgt = f_one);
 
   std::list<Node> _nodes;
   size_t _max_nodes;
-  double _target_accuracy;
+  size_t _min_nodes;
 };
 
 }  // namespace miho

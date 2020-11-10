@@ -54,8 +54,6 @@ int ab_integrand(unsigned ndim, const double* x, void* fdata, unsigned fdim,
     double dtest = std::fabs(abc->delta.at(i) / pow_a - b);
     if (dtest > max_val) max_val = dtest;
   }
-  if (miho::is_approx(max_val, 0.))
-    max_val = std::numeric_limits<double>::epsilon();
   result /= std::pow(max_val, m + 1. + abc->epsilon);
   //> done.
   if (!std::isfinite(result)) {
@@ -90,9 +88,9 @@ double ABCNumericModel::pdf_delta__mu(const std::vector<double>& delta) const {
   // cubature library
   const size_t maxEval = 10000;
   const double reqAbsError = 0.;
-  const double reqRelError = 0.003;
-  // const double reqRelError =
-  //     _target_accuracy;  // use same accuracy as the model
+  // const double reqRelError = 0.003;
+  const double reqRelError =
+      _target_accuracy;  // use same accuracy as the model
 
   // a = x[0]
   // b <-> x[1] mapped to [-intfy, +infty]
@@ -107,7 +105,11 @@ double ABCNumericModel::pdf_delta__mu(const std::vector<double>& delta) const {
   hcubature(1, ab_integrand, &fdata, 2, xmin, xmax, maxEval, reqAbsError,
             reqRelError, ERROR_INDIVIDUAL, val, err);
 
-  if (!std::isfinite(val[0])) return 0.;
+  if (!std::isfinite(val[0])) {
+    std::cerr << "#pdf_delta__mu: problem for delta[last] = " << delta.back()
+              << std::endl;
+    return 0.;
+  }
   return val[0];
 }
 

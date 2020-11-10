@@ -43,6 +43,7 @@ Run `miho -h` to get a help display.
     - `{dob95_low}` & `{dob95_upp}`: the lower and upper edges of the 95% degree-of-belief interval
     - `{mean}`: the mean of the distribution
     - `{stdev}`: the standard deviation of the distribution
+    - `{norm}`: the normalisation of the PDF (should be compatible with `1`)
 
 maybe use logging at some point:
 * https://github.com/gabime/spdlog

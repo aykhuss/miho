@@ -10,6 +10,7 @@ target_link_libraries(miho
   PRIVATE
   models
   CLI11::CLI11
+  cubature
 )
 
 # Prepare RPATH

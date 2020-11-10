@@ -41,9 +41,13 @@ class ABCNumericModel : public Model {
     _delta.reserve(_n_orders);
     // Eq.(3.4)
     _delta.push_back(1.);  // normalised w.r.t. LO <-> _sigma[0]
+    std::cerr << "ABCNumericModel::init [" << _delta.back();
     for (auto i = 1; i < _n_orders; ++i) {
       _delta.push_back((_sigma[i] - _sigma[i - 1]) / _sigma[0]);
+      std::cerr << ", " << _delta.back();
     }
+    std::cerr << "] " << std::endl;
+
   }
 
   double sigma(int order) const { return _sigma.at(order); };

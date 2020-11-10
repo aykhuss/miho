@@ -355,9 +355,11 @@ int main(int argc, char const* argv[]) {
   cli_model->set_accuracy(accuracy);
 
   if (flag_pdf) {
+    // fmt::print("\nprinting PDF...\n");
     cli_model->print_pdf();
     if (*app_format) print_format(format_string, cli_model);
   } else {
+    // fmt::print("\nprinting format...\n");
     print_format(format_string, cli_model);
   }
 

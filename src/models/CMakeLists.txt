@@ -27,8 +27,9 @@ target_include_directories(models
     ${CMAKE_CURRENT_LIST_DIR}
   )
 target_link_libraries(models
-  PRIVATE
+  PUBLIC
   fmt::fmt
+  PRIVATE
   cubature
   # adsj
 )

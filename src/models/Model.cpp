@@ -8,170 +8,147 @@
 
 namespace miho {
 
+const std::function<double(double)> Model::f_one = [](double x) { return 1.; };
+const std::function<double(double)> Model::f_wgt = [](double x) {
+  return 1. + 1e1 * std::fabs(x);
+};
+
 bool Model::node_exists(const Node& n) {
   for (const Node& inode : _nodes) {
-    if (is_approx(inode.x, n.x) && is_approx(inode.y, n.y)) return true;
+    if (is_approx(inode.x, n.x) && is_approx(inode.y, n.y) &&
+        is_approx(inode.sig, n.sig) && is_approx(inode.jac, n.jac))
+      return true;
   }
   return false;
 }
 
-void Model::print_nodes(const std::string & prefix) {
+void Model::print_nodes(const std::string& prefix) {
   for (const Node& n : _nodes) {
-    fmt::print(prefix + "{:<+20.14g} {:<+20.14g}\n", n.x, n.y);
+    // fmt::print(prefix + "{:<+20.14g} {:<+20.14g}\n", n.sig, n.y);
+
+    fmt::print(prefix + "{:<+20.14g} {:<+20.14g} [{:<+20.14g}, {:<+20.14g}]\n",
+               n.sig, n.y, n.x, n.jac);
+
     // std::cout << n.x << " \t " << n.y << std::endl;
   }
 }
 
 // very naive importance sampling to integrate over the pdf.
-void Model::adapt_integration(std::function<double(double)> func) {
+void Model::adapt_integration(std::function<double(double)> func,
+                              std::function<double(double)> rewgt) {
   // std::cout << "\n#integrate at order " << _n_orders << "\n";
-  // find three nodes to seed the integration
-  double integrate_center =
-      sigma() * (1. + std::numeric_limits<float>::epsilon());
-  double integrate_delta = 0.05 * std::fabs(integrate_center);  // 5%
-  if (_n_orders > 1) {
-    integrate_delta = std::fabs(integrate_center - sigma(_n_orders - 2));
-  }
 
-  // double min_sig = sigma(0);
-  // double max_sig = sigma(0);
-  // for (auto i_ord = 1; i_ord < _n_orders; ++i_ord) {
-  //   double sig = sigma(i_ord);
-  //   if (sig < min_sig) min_sig = sig;
-  //   if (sig > max_sig) max_sig = sig;
-  // }
-  // double integrate_delta = std::fabs(max_sig - min_sig) / 2.;
-  // if (integrate_delta < 0.1 * std::fabs(integrate_center))
-  //   integrate_delta = 0.1 * std::fabs(integrate_center);
+  // shift by eps for numerical stability
+  double sig_ctr = sigma() * (1. + std::numeric_limits<float>::epsilon());
 
-  // std::cout << "#range: " << integrate_center << " +- " << integrate_delta
-  //           << std::endl;
+  auto f_sig = [=](const double& x) { return sig_ctr + std::atanh(x); };
+  auto f_jac = [=](const double& x) { return 1. / (1. - x) / (1. + x); };
 
-  Node nctr, nlow, nupp;
-  // highest-order central prediction
-  nctr.x = integrate_center;
-  nctr.y = pdf(nctr.x) * func(nctr.x);
-  // fmt::print("# > center: ({},{})\n", nctr.x, nctr.y);
-  // lower variation (ordered list)
-  nlow.x = integrate_center - integrate_delta;
-  nlow.y = pdf(nlow.x) * func(nlow.x);
-  // fmt::print("# > lower:  ({},{})\n", nlow.x, nlow.y);
-  // upper variation (ordered list)
-  nupp.x = integrate_center + integrate_delta;
-  nupp.y = pdf(nupp.x) * func(nupp.x);
-  // fmt::print("# > upper:  ({},{})\n", nupp.x, nupp.y);
+  /// set up central node
+  Node node_i;
+  node_i.x = 0;
+  node_i.sig = f_sig(node_i.x);
+  node_i.jac = f_jac(node_i.x);
+  node_i.y = pdf(node_i.sig) * func(node_i.sig);
 
-  if (node_exists(nctr) && node_exists(nlow) && node_exists(nupp)) {
-    // we continue with the existing list
+  if (node_exists(node_i)) {
+    /// we continue with the existing list
   } else {
     // std::cout << "#adapt_integration: clearing nodes cache!\n";
     _nodes.clear();
-    _nodes.emplace_front(nctr);
-    _nodes.emplace_front(nlow);
-    _nodes.emplace_back(nupp);
+    /// central
+    _nodes.push_back(node_i);
+
+    /// add intermediate points (rewgt stability)
+    node_i.x = -0.9;
+    node_i.sig = f_sig(node_i.x);
+    node_i.jac = f_jac(node_i.x);
+    node_i.y = pdf(node_i.sig) * func(node_i.sig);
+    _nodes.push_front(node_i);
+    /// add intermediate points (rewgt stability)
+    node_i.x = +0.9;
+    node_i.sig = f_sig(node_i.x);
+    node_i.jac = f_jac(node_i.x);
+    node_i.y = pdf(node_i.sig) * func(node_i.sig);
+    _nodes.push_back(node_i);
+
+    /// force ZERO @ -infty
+    node_i.x = -1;
+    node_i.sig = -std::numeric_limits<double>::infinity();
+    node_i.jac = 0.;  // +std::numeric_limits<double>::infinity();
+    node_i.y = 0.;
+    _nodes.push_front(node_i);
+    /// force ZERO @ +infty
+    node_i.x = +1;
+    node_i.sig = +std::numeric_limits<double>::infinity();
+    node_i.jac = 0.;  // +std::numeric_limits<double>::infinity();
+    node_i.y = 0.;
+    _nodes.push_back(node_i);
   }
 
+  /// we want a minimum # of successive node insertions with desired acc
+  int nsucc = _min_nodes;
+  size_t count = 0;
   while (_nodes.size() < _max_nodes) {
-    double jump = 0.;
+    count++;
+    // print_nodes();
+    double jump = -1.;
     double result = 0.;
     double error = 0.;
-    double last_derivative = 0.;
-    double curr_derivative = 0.;
     auto node_pos = _nodes.begin();
-    for (auto it = _nodes.begin(); it != _nodes.end(); ++it) {
-      // compute some accumulator
-      if (it == _nodes.begin()) continue;
-      double dres =
-          (it->x - std::prev(it)->x) * (it->y + std::prev(it)->y) / 2.;
+    for (auto it = std::next(_nodes.begin()); it != _nodes.end(); ++it) {
+      /// accumulators
+      double dres = (it->x - std::prev(it)->x) *
+                    (it->y * it->jac + std::prev(it)->y * std::prev(it)->jac) /
+                    2.;
       result += dres;
-      dres = std::fabs(dres);
-      if (dres > jump) {
-        jump = dres;
+      double df_prev =
+          (it->y * it->jac - std::prev(it)->y * std::prev(it)->jac) /
+          (it->x - std::prev(it)->x);
+      double df_next =
+          (std::next(it)->y * std::next(it)->jac - it->y * it->jac) /
+          (std::next(it)->x - it->x);
+      double derr = std::fabs(df_prev - df_next) *
+                    pow(it->x - std::prev(it)->x, 2);  // / 12.;
+      error += derr;
+
+      /// find the next subdivision
+      double test = rewgt((it->x + std::prev(it)->x) / 2.);
+      if (count % 3 == 0) {
+        test *= dres;  // importance sampling
+      } else {
+        test *= derr;  // stratified sampling
+      }
+      // std::cout << "test @ " << it->x << ": " << test << std::endl;
+      if (test > jump) {
+        jump = test;
         node_pos = it;
-        // std::cout << "dres: " << dres << std::endl;
+        // std::cout << "jump!" << std::endl;
       }
-      // compute the error
-      curr_derivative = (it->y - std::prev(it)->y) / (it->x - std::prev(it)->x);
-      error += std::fabs(curr_derivative - last_derivative) *
-               pow(it->x - std::prev(it)->x, 2) / 12.;
-      last_derivative = curr_derivative;
     }
 
-    // place where the termination condition (target accuracy) would go in
-
-    Node n_new;
-    n_new.x = (node_pos->x + std::prev(node_pos)->x) / 2.;
-    // fmt::print("# > normal jump? {} by {}\n", n_new.x, jump);
-
-    // possibly extend range?
-    bool qextended = false;
-    double x0, dres0;
-    Node n1, n2;
-    const double weight = 1e2;
-    // front:
-    n1 = *_nodes.begin();
-    n2 = *std::next(_nodes.begin());
-    // x0 = n1.x - (n2.x - n1.x) * n1.y / (n2.y - n1.y) * weight;
-    // if (x0 >= n1.x) x0 = n1.x - weight * (n2.x - n1.x);
-    x0 = n1.x - weight * (n2.x - n1.x);
-    dres0 = std::fabs((n1.x - x0) * n1.y / 2.);
-    if (dres0 > jump) {
-      qextended = true;
-      jump = dres0;
-      node_pos = _nodes.begin();
-      n_new.x = x0;
-      // fmt::print("# > front jump? {} by {}\n", n_new.x, jump);
-    }
-    // back:
-    n1 = *_nodes.rbegin();
-    n2 = *std::next(_nodes.rbegin());
-    // x0 = n1.x - (n2.x - n1.x) * n1.y / (n2.y - n1.y) * weight;
-    // if (x0 <= n1.x) x0 = n1.x - weight * (n2.x - n1.x);
-    x0 = n1.x - weight * (n2.x - n1.x);
-    dres0 = std::fabs((n1.x - x0) * n1.y / 2.);
-    if (dres0 > jump) {
-      qextended = true;
-      jump = dres0;
-      node_pos = _nodes.end();
-      n_new.x = x0;
-      // fmt::print("# > back jump? {} by {}\n", n_new.x, jump);
+    /// done?
+    if (std::fabs(error / result) <= _target_accuracy) {
+      nsucc--;
+      if (nsucc < 0) break;
+      // std::cerr << "reached target accuracy[" << nsucc << "]: " << result
+      //           << " +/- " << error << " [" << error / result << "/"
+      //           << _target_accuracy << "] in " << _nodes.size() << "
+      //           steps\n";
+    } else {
+      nsucc = _min_nodes;
     }
 
-    // insert new element
-    // fmt::print("#  >> new x = {}\n", n_new.x);
-    n_new.y = pdf(n_new.x) * func(n_new.x);
-    // fmt::print("#  >> new y = {}\n", n_new.y);
-    node_pos = _nodes.insert(node_pos, n_new);
-    // fmt::print("# new element: ({},{}) \n", n_new.x, n_new.y);
-
+    /// insert new element
+    node_i.x = (node_pos->x + std::prev(node_pos)->x) / 2.;
+    node_i.sig = f_sig(node_i.x);
+    node_i.jac = f_jac(node_i.x);
+    node_i.y = pdf(node_i.sig) * func(node_i.sig);
+    node_pos = _nodes.insert(node_pos, node_i);
+    // fmt::print(
+    //     "# new element: {:<+20.14g} {:<+20.14g} [{:<+20.14g},
+    //     {:<+20.14g}]\n", node_i.sig, node_i.y, node_i.x, node_i.jac);
     // std::cin.ignore();
-
-    // check for accuracy termination condition
-    if (!qextended) {
-      // // guaranteed to be somewhere in the "middle"
-      // double region_old = (std::next(node_pos)->x - std::prev(node_pos)->x) *
-      //                     (std::next(node_pos)->y + std::prev(node_pos)->y) /
-      //                     2.;
-      // double region_new = 0.;
-      // region_new += (std::next(node_pos)->x - node_pos->x) *
-      //               (std::next(node_pos)->y + node_pos->y) / 2.;
-      // region_new += (node_pos->x - std::prev(node_pos)->x) *
-      //               (node_pos->y + std::prev(node_pos)->y) / 2.;
-      // std::cout << "region_old: " << region_old << std::endl;
-      // std::cout << "region_new: " << region_new << std::endl;
-      // double check = 1e4 * std::fabs(region_old - region_new) *
-      // _nodes.size(); double check = 1.5 * std::fabs(jump); // empirical
-      // prefactor double check = 1.5 * std::fabs(jump) +
-      //                std::fabs(region_old - region_new) * _nodes.size();
-      double check = error;
-      if (std::fabs(check / result) <= _target_accuracy) {
-        // std::cout << "reached target accuracy: " << result << " +/- " <<
-        // check
-        //           << " [" << check / result << "/" << _target_accuracy
-        //           << "] in " << _nodes.size() << " steps\n";
-        break;
-      }
-    }
   }
 }
 
@@ -185,7 +162,8 @@ double Model::integrate(std::function<double(double)> func) {
   for (auto it = _nodes.begin(); it != _nodes.end(); ++it) {
     // fmt::print("{:<+20.16g} {:<+20.16g}  # = (x,y)\n", it->x, it->y);
     if (it == _nodes.begin()) continue;
-    result += (it->x - std::prev(it)->x) * (it->y + std::prev(it)->y) / 2.;
+    result += (it->x - std::prev(it)->x) *
+              (it->y * it->jac + std::prev(it)->y * std::prev(it)->jac) / 2.;
   }
   // std::cout << "# result = " << result << std::endl;
 
@@ -193,26 +171,30 @@ double Model::integrate(std::function<double(double)> func) {
 }
 
 std::pair<double, double> Model::degree_of_belief_interval(const double& p) {
-  adapt_integration([](double x) { return 1.; });
+  adapt_integration(f_one, f_wgt);
 
   double lower = 0.;
   double upper = 0.;
 
   double percentile = 0.;
   for (auto it = std::next(_nodes.begin()); it != _nodes.end(); ++it) {
-    percentile += (it->x - std::prev(it)->x) * (it->y + std::prev(it)->y) / 2.;
+    percentile += (it->x - std::prev(it)->x) *
+                  (it->y * it->jac + std::prev(it)->y * std::prev(it)->jac) /
+                  2.;
     // std::cout << "# low " << it->x << ": " << percentile << std::endl;
     if (percentile >= (1.0 - p) / 2.) {
-      lower = it->x;
+      lower = it->sig;
       break;
     }
   }
   percentile = 0.;
   for (auto it = std::next(_nodes.rbegin()); it != _nodes.rend(); ++it) {
-    percentile += (std::prev(it)->x - it->x) * (it->y + std::prev(it)->y) / 2.;
+    percentile += (std::prev(it)->x - it->x) *
+                  (std::prev(it)->y * std::prev(it)->jac + it->y * it->jac) /
+                  2.;
     // std::cout << "# upp " << it->x << ": " << percentile << std::endl;
     if (percentile >= (1.0 - p) / 2.) {
-      upper = it->x;
+      upper = it->sig;
       break;
     }
   }
