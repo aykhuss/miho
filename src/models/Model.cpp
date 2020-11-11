@@ -54,7 +54,7 @@ void Model::adapt_integration(std::function<double(double)> func,
   if (node_exists(node_i)) {
     /// we continue with the existing list
   } else {
-    // std::cout << "#adapt_integration: clearing nodes cache!\n";
+    std::cerr << "#adapt_integration: clearing nodes cache!\n";
     _nodes.clear();
     /// central
     _nodes.push_back(node_i);
@@ -109,7 +109,7 @@ void Model::adapt_integration(std::function<double(double)> func,
           (std::next(it)->y * std::next(it)->jac - it->y * it->jac) /
           (std::next(it)->x - it->x);
       double derr = std::fabs(df_prev - df_next) *
-                    pow(it->x - std::prev(it)->x, 2);  // / 12.;
+                    pow(it->x - std::prev(it)->x, 2) / 12.;
       error += derr;
 
       /// find the next subdivision

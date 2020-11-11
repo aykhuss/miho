@@ -1,5 +1,10 @@
 add_library(models "")
 
+# find_package(Boost)
+# if(Boost_FOUND)
+#   include_directories(${Boost_INCLUDE_DIRS})
+# endif()
+
 target_sources(models
   PRIVATE
     Util.cpp
@@ -31,5 +36,6 @@ target_link_libraries(models
   fmt::fmt
   PRIVATE
   cubature
+  # Boost::headers
   # adsj
 )

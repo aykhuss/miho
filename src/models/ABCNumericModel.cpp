@@ -4,6 +4,7 @@
 #include <fmt/format.h>
 
 #include <algorithm>
+// #include <boost/math/quadrature/naive_monte_carlo.hpp>
 #include <cmath>
 #include <iostream>
 #include <limits>
@@ -41,21 +42,20 @@ int ab_integrand(unsigned ndim, const double* x, void* fdata, unsigned fdim,
 
   const ABCdata* abc = (ABCdata*)fdata;
   double m = abc->delta.size() - 1.;  // counting starts at 0
-  //> prefactor
-  result *= abc->epsilon * (1. + abc->omega) /
+  /// some a-factors combined with max_val for stability
+  result *= std::pow(1. - a, abc->omega) * std::pow(a, m * abc->epsilon / 2.) *
+            abc->epsilon * (1. + abc->omega) /
             (std::pow(2., m + 1.) * abc->xi * (m + 1. + abc->epsilon));
-  //> a-dependent piece
-  result *= std::pow(1. - a, abc->omega) / std::pow(a, m * (m + 1.) / 2.);
-  //> b-dependent piece (max function)
+  /// find max value
   double max_val = std::max(1., std::fabs(b) / abc->xi);
   double pow_a = 1.;  // accumulate a-powers
-  for (auto i = 1; i <= m; ++i) {
+  for (auto i = 1; i < abc->delta.size(); ++i) {
     pow_a *= a;  // pow_a = a^i
     double dtest = std::fabs(abc->delta.at(i) / pow_a - b);
     if (dtest > max_val) max_val = dtest;
   }
-  result /= std::pow(max_val, m + 1. + abc->epsilon);
-  //> done.
+  result /= std::pow(std::sqrt(pow_a) * max_val, m + 1. + abc->epsilon);
+  /// done.
   if (!std::isfinite(result)) {
     std::cerr << "#ab_integrand: problem for a = " << a << ", b = " << b
               << std::endl;
@@ -85,13 +85,12 @@ double ABCNumericModel::pdf_delta___delta_mu(const double& delta_next) const {
 }
 
 double ABCNumericModel::pdf_delta__mu(const std::vector<double>& delta) const {
-  // cubature library
+  //----- cubature library
   const size_t maxEval = 10000;
   const double reqAbsError = 0.;
   // const double reqRelError = 0.003;
   const double reqRelError =
       _target_accuracy;  // use same accuracy as the model
-
   // a = x[0]
   // b <-> x[1] mapped to [-intfy, +infty]
   const double xmin[2] = {+0. + std::numeric_limits<float>::epsilon(),
@@ -99,18 +98,74 @@ double ABCNumericModel::pdf_delta__mu(const std::vector<double>& delta) const {
   const double xmax[2] = {+1. - std::numeric_limits<float>::epsilon(),
                           +1. - std::numeric_limits<float>::epsilon()};
   double val[1], err[1];
-
+  /// package up struct
   ABCdata fdata = {delta, _epsilon, _xi, _omega};
-
   hcubature(1, ab_integrand, &fdata, 2, xmin, xmax, maxEval, reqAbsError,
             reqRelError, ERROR_INDIVIDUAL, val, err);
-
   if (!std::isfinite(val[0])) {
     std::cerr << "#pdf_delta__mu: problem for delta[last] = " << delta.back()
               << std::endl;
     return 0.;
   }
   return val[0];
+
+  // //----- boost naive MC
+  // using boost::math::quadrature::naive_monte_carlo;
+  // auto f_ab = [&](std::vector<double> const& x) -> double {
+  //   double result = 1.;
+  //   /// a mapping:  linear
+  //   double a = x[0];
+  //   /// b-mapping:  arctanh(x)
+  //   const double b = std::atanh(x[1]);
+  //   result /= (1. - x[1]) * (1. + x[1]);  // Jac for b-mapping
+  //   // std::cerr << "result[1] = " << result << std::endl;
+  //   double m = delta.size() - 1.;  // counting starts at 0
+  //   result *= std::pow(1. - a, _omega) * std::pow(a, m * _epsilon / 2.) *
+  //             _epsilon * (1. + _omega) /
+  //             (std::pow(2., m + 1.) * _xi * (m + 1. + _epsilon));
+  //   // std::cerr << "result[3] = " << result << std::endl;
+  //   //> b-dependent piece (max function)
+  //   double max_val = std::max(1., std::fabs(b) / _xi);
+  //   double pow_a = 1.;  // accumulate a-powers
+  //   for (auto i = 1; i < delta.size(); ++i) {
+  //     pow_a *= a;  // pow_a = a^i
+  //     double dtest = std::fabs(delta.at(i) / pow_a - b);
+  //     if (dtest > max_val) max_val = dtest;
+  //   }
+  //   result /= std::pow(std::sqrt(pow_a) * max_val, m + 1. + _epsilon);
+  //   // std::cerr << "result[4] = " << result << std::endl;
+  //   /// done.
+  //   // std::cerr << "eps = " << _epsilon << std::endl;
+  //   // std::cerr << "xi  = " << _xi << std::endl;
+  //   // std::cerr << "omg = " << _omega << std::endl;
+  //   // std::cerr << "f_ab(" << a << "," << b << ") = " << result << std::endl;
+  //   // std::cin.ignore();
+  //   if (!std::isfinite(result)) {
+  //     std::cerr << "#f_ab: problem for a = " << a << ", b = " << b << std::endl;
+  //     std::cerr << "m       = " << m << std::endl;
+  //     std::cerr << "eps     = " << _epsilon << std::endl;
+  //     std::cerr << "xi      = " << _xi << std::endl;
+  //     std::cerr << "omg     = " << _omega << std::endl;
+  //     std::cerr << "max_val = " << max_val << std::endl;
+  //     std::cerr << "pow_a   = " << pow_a << std::endl;
+  //     std::cin.ignore();
+  //     return 0.;
+  //   }
+  //   return result;
+  // };
+  // std::vector<std::pair<double, double>> bounds{{0, 1}, {-1, +1}};
+  // double error_goal = 0.05;
+  // boost::math::quadrature::naive_monte_carlo<double, decltype(f_ab)> mc(
+  //     f_ab, bounds, error_goal, /*singular = */ true, /*threads = */ 1,
+  //     /*seed = */ 0);
+  // std::future<double> task = mc.integrate();
+  // double res_mc = task.get();
+
+  // std::cerr << "cubature: " << val[0] << std::endl;
+  // std::cerr << "naive mc: " << res_mc << std::endl;
+  // std::cin.ignore();
+
+  // return res_mc;
 }
 
 double ABCNumericModel::pdf_delta__mu(const double& delta_next) const {

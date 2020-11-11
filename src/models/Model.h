@@ -25,7 +25,7 @@ class Model {
   virtual double pdf(const double& val) const = 0;
   double integrate(std::function<double(double)> func);
   inline double norm() {
-    return integrate([](double x) { return 1.; });
+    return integrate(f_one);
   }
   inline double moment(int p) {
     return integrate([=](double x) { return std::pow(x, p); });

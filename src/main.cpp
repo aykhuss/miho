@@ -409,10 +409,6 @@ std::vector<std::vector<double>> parse_data_file(const std::string& file_name) {
 void print_format(std::string format_string,
                   std::shared_ptr<miho::Model> model) {
   fmt::dynamic_format_arg_store<fmt::format_context> format_arg_list;
-  if (std::regex_search(format_string, std::regex("\\{norm\\}"))) {
-    double norm = model->norm();
-    format_arg_list.push_back<double>(fmt::arg("norm", norm));
-  }
   if (std::regex_search(format_string, std::regex("\\{median\\}"))) {
     double median = model->median();
     format_arg_list.push_back<double>(fmt::arg("median", median));
@@ -428,6 +424,10 @@ void print_format(std::string format_string,
     std::pair<double, double> DoB95 = model->degree_of_belief_interval(0.95);
     format_arg_list.push_back(fmt::arg("dob95_low", DoB95.first));
     format_arg_list.push_back(fmt::arg("dob95_upp", DoB95.second));
+  }
+  if (std::regex_search(format_string, std::regex("\\{norm\\}"))) {
+    double norm = model->norm();
+    format_arg_list.push_back<double>(fmt::arg("norm", norm));
   }
   if (std::regex_search(format_string, std::regex("\\{mean\\}")) ||
       std::regex_search(format_string, std::regex("\\{stdev\\}"))) {
