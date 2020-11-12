@@ -1,5 +1,6 @@
 #include <fmt/color.h>
 #include <fmt/format.h>
+#include <fmt/args.h>
 
 #include <CLI/CLI.hpp>
 #include <cmath>
@@ -353,6 +354,18 @@ int main(int argc, char const* argv[]) {
 
   cli_model->set_max_nodes(nmax);
   cli_model->set_accuracy(accuracy);
+
+  /// run the adaption and get the 68% DoB interval
+  /// override the target accuracy if distribution is too confined
+  std::pair<double, double> dob68 = cli_model->degree_of_belief_interval();
+  double rel_dob =
+      std::fabs((dob68.first - dob68.second) / (dob68.first + dob68.second));
+  if (rel_dob < accuracy) {
+    std::cerr << "overriding target accuracy to: " << rel_dob
+              << "[input: " << accuracy << "]" << std::endl;
+    // cli_model->clear();
+    cli_model->set_accuracy(rel_dob);
+  }
 
   if (flag_pdf) {
     // fmt::print("\nprinting PDF...\n");
