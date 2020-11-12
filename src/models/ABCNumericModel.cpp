@@ -46,15 +46,17 @@ int ab_integrand(unsigned ndim, const double* x, void* fdata, unsigned fdim,
   result *= std::pow(1. - a, abc->omega) * std::pow(a, m * abc->epsilon / 2.) *
             abc->epsilon * (1. + abc->omega) /
             (std::pow(2., m + 1.) * abc->xi * (m + 1. + abc->epsilon));
-  /// find max value
-  double max_val = std::max(1., std::fabs(b) / abc->xi);
-  double pow_a = 1.;  // accumulate a-powers
+  /// find max value (absorbs factor of a^(m/2) for numerical stability)
+  double a_fac = std::pow(a, m / 2.);
+  double b_fac = a_fac * b;
+  double max_val = a_fac * std::max(1., std::fabs(b) / abc->xi);
+  double del_fac = a_fac;  // accumulate a-powers
   for (auto i = 1; i < abc->delta.size(); ++i) {
-    pow_a *= a;  // pow_a = a^i
-    double dtest = std::fabs(abc->delta.at(i) / pow_a - b);
+    del_fac /= a;  // del_fac = a^(m/2) / a^i
+    double dtest = std::fabs(abc->delta.at(i) * del_fac - b_fac);
     if (dtest > max_val) max_val = dtest;
   }
-  result /= std::pow(std::sqrt(pow_a) * max_val, m + 1. + abc->epsilon);
+  result /= std::pow(max_val, m + 1. + abc->epsilon);
   /// done.
   if (!std::isfinite(result)) {
     std::cerr << "#ab_integrand: problem for a = " << a << ", b = " << b
@@ -86,11 +88,10 @@ double ABCNumericModel::pdf_delta___delta_mu(const double& delta_next) const {
 
 double ABCNumericModel::pdf_delta__mu(const std::vector<double>& delta) const {
   //----- cubature library
-  const size_t maxEval = 10000;
-  const double reqAbsError = 0.;
-  // const double reqRelError = 0.003;
-  const double reqRelError =
-      _target_accuracy;  // use same accuracy as the model
+  size_t maxEval = 100000;
+  double reqAbsError = 0.;
+  double reqRelError = std::min(_nint_rel_err, _target_accuracy);
+  // reqRelError *= 5.;  // init value (n_loop > 1)
   // a = x[0]
   // b <-> x[1] mapped to [-intfy, +infty]
   const double xmin[2] = {+0. + std::numeric_limits<float>::epsilon(),
@@ -100,14 +101,56 @@ double ABCNumericModel::pdf_delta__mu(const std::vector<double>& delta) const {
   double val[1], err[1];
   /// package up struct
   ABCdata fdata = {delta, _epsilon, _xi, _omega};
-  hcubature(1, ab_integrand, &fdata, 2, xmin, xmax, maxEval, reqAbsError,
-            reqRelError, ERROR_INDIVIDUAL, val, err);
-  if (!std::isfinite(val[0])) {
-    std::cerr << "#pdf_delta__mu: problem for delta[last] = " << delta.back()
-              << std::endl;
-    return 0.;
+
+  double val_last = 0.;
+  double err_last = -1.;
+  int count = 0;
+  while (true) {
+    count++;
+    hcubature(1, ab_integrand, &fdata, 2, xmin, xmax, maxEval, reqAbsError,
+              reqRelError, ERROR_INDIVIDUAL, val, err);
+
+    if (!std::isfinite(val[0])) {
+      std::cerr << "pdf_delta__mu: problem for delta[last] = " << delta.back()
+                << std::endl;
+      return 0.;
+    }
+
+    if (err_last > 0. && is_approx(val[0] + val_last, 0.)) break;
+    // if (err_last > 0. &&
+    //     std::fabs((val[0] - val_last) / (val[0] + val_last)) < _nint_rel_err) {
+    //   break;
+    // }
+    if ((err_last > 0.) &&
+        ((std::fabs(val[0] - val_last) <
+          3. * std::sqrt(err[0] * err[0] + err_last * err_last)) ||
+         (std::fabs((val[0] - val_last) / (val[0] + val_last)) <
+          _target_accuracy))) {
+      break;
+    }
+    if (count >= 7) {
+      // std::cerr << "pdf_delta__mu: couldn't find plateau in " << count
+      //           << " steps  (acc = " << _nint_rel_err << " -> " << reqRelError
+      //           << ")" << std::endl;
+      // std::cerr << "last: " << val_last << " +- " << err_last << std::endl;
+      // std::cerr << "curr: " << val[0] << " +- " << err[0] << std::endl;
+      break;
+    }
+
+    reqRelError /= 3.;
+    val_last = val[0];
+    err_last = err[0];
   }
   return val[0];
+
+  // hcubature(1, ab_integrand, &fdata, 2, xmin, xmax, maxEval, reqAbsError,
+  //           reqRelError, ERROR_INDIVIDUAL, val, err);
+  // if (!std::isfinite(val[0])) {
+  //   std::cerr << "#pdf_delta__mu: problem for delta[last] = " << delta.back()
+  //             << std::endl;
+  //   return 0.;
+  // }
+  // return val[0];
 
   // //----- boost naive MC
   // using boost::math::quadrature::naive_monte_carlo;
@@ -138,14 +181,14 @@ double ABCNumericModel::pdf_delta__mu(const std::vector<double>& delta) const {
   //   // std::cerr << "eps = " << _epsilon << std::endl;
   //   // std::cerr << "xi  = " << _xi << std::endl;
   //   // std::cerr << "omg = " << _omega << std::endl;
-  //   // std::cerr << "f_ab(" << a << "," << b << ") = " << result << std::endl;
+  //   // std::cerr << "f_ab(" << a << "," << b << ") = " << result <<
+  //   std::endl;
   //   // std::cin.ignore();
   //   if (!std::isfinite(result)) {
-  //     std::cerr << "#f_ab: problem for a = " << a << ", b = " << b << std::endl;
-  //     std::cerr << "m       = " << m << std::endl;
-  //     std::cerr << "eps     = " << _epsilon << std::endl;
-  //     std::cerr << "xi      = " << _xi << std::endl;
-  //     std::cerr << "omg     = " << _omega << std::endl;
+  //     std::cerr << "#f_ab: problem for a = " << a << ", b = " << b <<
+  //     std::endl; std::cerr << "m       = " << m << std::endl; std::cerr <<
+  //     "eps     = " << _epsilon << std::endl; std::cerr << "xi      = " << _xi
+  //     << std::endl; std::cerr << "omg     = " << _omega << std::endl;
   //     std::cerr << "max_val = " << max_val << std::endl;
   //     std::cerr << "pow_a   = " << pow_a << std::endl;
   //     std::cin.ignore();
@@ -161,9 +204,9 @@ double ABCNumericModel::pdf_delta__mu(const std::vector<double>& delta) const {
   // std::future<double> task = mc.integrate();
   // double res_mc = task.get();
 
-  // std::cerr << "cubature: " << val[0] << std::endl;
-  // std::cerr << "naive mc: " << res_mc << std::endl;
-  // std::cin.ignore();
+  // // std::cerr << "cubature: " << val[0] << std::endl;
+  // // std::cerr << "naive mc: " << res_mc << std::endl;
+  // // std::cin.ignore();
 
   // return res_mc;
 }

@@ -26,6 +26,7 @@ class GeometricModel : public Model {
     // std::cout << "GeometricModel - init - " << _omega << ", " << _epsilon
     //           << std::endl;
     // update everything after changing _sigma
+    clear();  // clear cached nodes
     _n_orders = _sigma.size();
     _delta.clear();
     _delta.reserve(_n_orders);
