@@ -221,7 +221,7 @@ int a_integrand(unsigned ndim, const double* x, void* fdata, unsigned fdim,
              abc->xi / mpope;
       // std::cout << "interval 3: " << b_next<< " | " << acc << "\n";
     }
-    if (i_next != 4) throw "#a_integrand: xi < 1: no i_next closure";
+    if (i_next != 4) throw "#a_integrand: xi > 1: no i_next closure";
     b_upp = b_next;
     acc += std::pow(R - b_upp, -mpope) / mpope;
     // std::cout << "interval 4: " << b_next<< " | " << acc << "\n";
