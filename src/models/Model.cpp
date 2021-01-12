@@ -5,6 +5,7 @@
 #include <cmath>
 #include <iostream>
 #include <list>
+#include <limits>
 
 namespace miho {
 
@@ -15,8 +16,9 @@ const std::function<double(double)> Model::f_wgt = [](double x) {
 
 bool Model::node_exists(const Node& n) const {
   for (const Node& inode : _nodes) {
-    if (is_approx(inode.x, n.x) && is_approx(inode.pdf, n.pdf) &&
-        is_approx(inode.sig, n.sig) && is_approx(inode.jac, n.jac))
+    if (is_approx(inode.x, n.x) && is_approx(inode.sig, n.sig) &&
+        is_approx(inode.jac, n.jac) && is_approx(inode.pdf, n.pdf) &&
+        is_approx(inode.func, n.func))
       return true;
   }
   return false;
@@ -26,8 +28,7 @@ void Model::print_nodes(const std::string& prefix) {
   for (const Node& n : _nodes) {
     fmt::print(prefix + "{:<+20.14g} {:<+20.14g}\n", n.sig, n.pdf);
 
-    // fmt::print(
-    //     prefix +
+    // fmt::print(prefix +
     //         "{:<+20.14g} {:<+20.14g} {:<+20.14g} [{:<+20.14g}, {:<+20.14g}]\n",
     //     n.sig, n.pdf, n.func, n.x, n.jac);
 
@@ -41,15 +42,42 @@ void Model::adapt_integration(std::function<double(double)> func,
   // std::cout << "\n#integrate at order " << _n_orders << "\n";
 
   // shift by eps for numerical stability
-  double sig_ctr = sigma() * (1. + std::numeric_limits<float>::epsilon());
+  const double sig_ctr = sigma() * (1. + std::numeric_limits<float>::epsilon());
 
-  auto f_sig = [=](const double& x) { return sig_ctr + std::atanh(x); };
-  auto f_jac = [=](const double& x) { return 1. / (1. - x) / (1. + x); };
+  // auto f_sig = [&sig_ctr](const double& x) {
+  //   return sig_ctr * (1 + std::atanh(x));
+  // };
+  // auto f_jac = [&sig_ctr](const double& x) {
+  //   return sig_ctr / (1. - x) / (1. + x);
+  // };
+
+  auto f_sig = [&sig_ctr](const double& x) {
+    const volatile double oMx_sq = (1 - x) * (1 + x);
+    return sig_ctr * (1 + x / oMx_sq);
+  };
+  auto f_jac = [&sig_ctr](const double& x) {
+    const volatile double oMx_sq = (1 - x) * (1 + x);
+    return sig_ctr * (1. + x * x) / (oMx_sq * oMx_sq);
+  };
 
   /// set up central node
   Node node_i;
 
+  // /// this is for optimisation for each integrand type...
+  // node_i.x = 0;
+  // node_i.sig = f_sig(node_i.x);
+  // node_i.jac = f_jac(node_i.x);
+  // node_i.pdf = pdf(node_i.sig);
+  // node_i.func = func(node_i.sig);
+  // if (node_exists(node_i)) {
+  //   /// we continue with the existing list
+  // } else {
+  //   std::cerr << "#adapt_integration: clearing nodes cache!\n";
+  //   clear();
+  // }
+
   if (_nodes.empty()) {
+    // std::cerr << "# adapt integration: start fresh..." << std::endl;
     /// central
     node_i.x = 0;
     node_i.sig = f_sig(node_i.x);
@@ -138,11 +166,13 @@ void Model::adapt_integration(std::function<double(double)> func,
       /// find the next subdivision
       double test = rewgt((it->x + it_prev->x) / 2.);
       if (count % 3 == 0) {
+        // std::cout << " - importance - ";
         test *= dres;  // importance sampling
       } else {
+        // std::cout << " - stratified - ";
         test *= derr;  // stratified sampling
       }
-      // std::cout << "test @ " << it->x << ": " << test << std::endl;
+      // std::cout << "test @ " << it->x << ": " << it->sig << " ->" << test << std::endl;
       if (test > jump) {
         jump = test;
         node_pos = it;
@@ -158,7 +188,8 @@ void Model::adapt_integration(std::function<double(double)> func,
       if (nsucc < 0) break;
       // std::cerr << "reached target accuracy[" << nsucc << "]: " << result
       //           << " +/- " << error << " [" << error / result << "/"
-      //           << _target_accuracy << " | " << norm << "] in " << _nodes.size()
+      //           << _target_accuracy << " | " << norm << "] in " <<
+      //           _nodes.size()
       //           << "steps\n";
     } else {
       nsucc = _min_nodes;
@@ -173,8 +204,8 @@ void Model::adapt_integration(std::function<double(double)> func,
     node_i.func = func(node_i.sig);
     node_pos = _nodes.insert(node_pos, node_i);
     // fmt::print(
-    //     "# new element: {:<+20.14g} {:<+20.14g} [{:<+20.14g},
-    //     {:<+20.14g}]\n", node_i.sig, node_i.y, node_i.x, node_i.jac);
+    //     "# new element: {:<+20.14g} {:<+20.14g} [{:<+20.14g},{:<+20.14g}]\n",
+    //     node_i.sig, node_i.func, node_i.x, node_i.jac);
     // std::cin.ignore();
   }
 }
@@ -186,12 +217,16 @@ double Model::integrate(std::function<double(double)> func) {
   // print_nodes("#DEBUG: ");
 
   double result = 0.;
-  for (auto it = _nodes.begin(); it != _nodes.end(); ++it) {
-    // fmt::print("{:<+20.16g} {:<+20.16g}  # = (x,y)\n", it->x, it->y);
-    if (it == _nodes.begin()) continue;
-    result += (it->x - std::prev(it)->x) *
-              (it->pdf * it->func * it->jac +
-               std::prev(it)->pdf * std::prev(it)->func * std::prev(it)->jac) /
+  for (auto it_curr = _nodes.begin(); it_curr != _nodes.end(); ++it_curr) {
+    const auto it_prev = std::prev(it_curr);
+    // fmt::print("{:<+20.16g} {:<+20.16g}  # = (x,y)\n", it_curr->x,
+    // it_curr->y);
+    if (!std::isfinite(it_curr->x) || !std::isfinite(it_prev->x) ||
+        it_curr == _nodes.begin())
+      continue;
+    result += (it_curr->x - it_prev->x) *
+              (it_curr->pdf * it_curr->func * it_curr->jac +
+               it_prev->pdf * it_prev->func * it_prev->jac) /
               2.;
   }
   // std::cout << "# result = " << result << std::endl;

@@ -19,6 +19,7 @@ class Model {
         _max_nodes{10000},
         _min_nodes{10},
         _nodes{} {}
+  virtual ~Model() noexcept = default;
   virtual double sigma(int order) const = 0;
   inline double sigma() const { return sigma(_n_orders - 1); };
   inline size_t n_orders() const { return _n_orders; };

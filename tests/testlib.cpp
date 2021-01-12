@@ -2,9 +2,9 @@
 #include <catch2/catch.hpp>
 #include <limits>
 
-#include "Util.h"
 #include "GeometricModel.h"
 #include "Model.h"
+#include "Util.h"
 
 miho::GeometricModel gm({1., 2., 2.5, 2.6});
 
@@ -49,14 +49,12 @@ TEST_CASE("hypergeometric_2F1", "[Util]") {
   // output_2 = r2f1_adsj(0.1, 3.3, 4.2, 0.9);
   // REQUIRE(output_2 == Approx(check_2));
 
-
   double output_3 = miho::hypergeometric_2F1(11, 7, 5.3, -0.4);
   double check_3 = 0.0048317;
   REQUIRE(output_3 == Approx(check_3));
 
   // output_3 = r2f1_adsj(11, 7, 5.3, -0.4);
   // REQUIRE(output_3 == Approx(check_3));
-
 
   double output_4 = miho::hypergeometric_2F1(3, 8, 5.2, -0.3);
   double check_4 = 0.307245;
@@ -65,14 +63,12 @@ TEST_CASE("hypergeometric_2F1", "[Util]") {
   // output_4 = r2f1_adsj(3, 8, 5.2, -0.3);
   // REQUIRE(output_4 == Approx(check_4));
 
-
   double output_5 = miho::hypergeometric_2F1(2, 5, 9, -0.8);
   double check_5 = 0.490718;
   REQUIRE(output_5 == Approx(check_5));
 
   // output_5 = r2f1_adsj(2, 5, 9, -0.8);
   // REQUIRE(output_5 == Approx(check_5));
-
 }
 
 TEST_CASE("appell_f1", "[Util]") {
@@ -99,9 +95,8 @@ TEST_CASE("appell_f1", "[Util]") {
 }
 
 TEST_CASE("limits", "[Model]") {
-  REQUIRE( (std::numeric_limits<double>::infinity() > 42.e+42 ) == true);
+  REQUIRE((std::numeric_limits<double>::infinity() > 42.e+42) == true);
 }
-
 
 TEST_CASE("a list", "[GeometricModel]") {
   double inf = std::numeric_limits<double>::infinity();
@@ -117,3 +112,56 @@ TEST_CASE("a list", "[GeometricModel]") {
   REQUIRE_THAT(output_3,
                Catch::Approx<double>({inf, 0.793701, 0.793701, 0.793701, 0.}));
 }
+
+TEST_CASE("new a list", "[Util]") {
+  double inf = std::numeric_limits<double>::infinity();
+
+  auto output_1 = miho::a_list({1., 0.5, 0.1, 0.01});
+  REQUIRE_THAT(output_1, Catch::Approx<double>({inf, 0.5, 0.2, 0.1, 0.}));
+
+  auto output_2 = miho::a_list({1., 0.01, 0.5, 0.1});
+  REQUIRE_THAT(output_2,
+               Catch::Approx<double>({inf, 0.707107, 0.707107, 0.2, 0.}));
+
+  auto output_3 = miho::a_list({1., 0.01, 0.1, 0.5});
+  REQUIRE_THAT(output_3,
+               Catch::Approx<double>({inf, 0.793701, 0.793701, 0.793701, 0.}));
+
+  for (auto i_test = 0; i_test < 1000; ++i_test) {
+    // std::cerr << "-= test " << i_test << " =-\n";
+    /// generate test sequence of 1-10 numbers  (random between [-1,+1])
+    const int len_seq = static_cast<int>(1 + 10 * miho::rand());
+    // std::cerr << "sequence length: " << len_seq << "\n";
+    std::vector<double> delta;
+    delta.push_back(1.);  // delta_0
+    for (auto i_seq = 0; i_seq < len_seq; ++i_seq) {
+      delta.push_back(-1. + 2. * miho::rand());
+      // std::cerr << i_seq+1 << ": " << delta.back() << "\n";
+    }
+    /// randomly set some numbers to exact zero (edge cases)
+    const int n_zero = static_cast<int>(miho::rand() * len_seq / 2.);
+    for (auto i_zero = 0; i_zero < n_zero; ++i_zero) {
+      /// do not touch delta[0]
+      int idx = static_cast<int>(1 + len_seq * miho::rand());
+      delta.at(idx) = 0.;
+    }
+    /// perform test on range a = [1/10, 10] in n_a steps
+    const auto n_a = 1000;
+    for (auto i_a = 0; i_a < n_a; ++i_a) {
+      const double a = 0.1 + i_a * 10. / double(n_a);
+      std::pair<double, double> min_max_num = miho::get_min_max(a, delta);
+      std::pair<double, double> min_max_chk = miho::get_min_max_check(a, delta);
+      // std::cerr << "a[num]: " << a << "\t" << min_max_num.first << "\t" << min_max_num.second << "\n";
+      // std::cerr << "a[chk]: " << a << "\t" << min_max_chk.first << "\t" << min_max_chk.second << "\n";
+      REQUIRE(min_max_num.first == Approx(min_max_chk.first));
+      REQUIRE(min_max_num.second == Approx(min_max_chk.second));
+      // std::cin.ignore();
+    }
+
+  }
+}
+
+
+
+
+

@@ -14,16 +14,18 @@ class ABCNumericModel : public Model {
         _delta(),
         _q_pdf_den(false),
         _omega(1),
-        _xi(1.0),
+        _xi(5.0),
         _epsilon(0.1),
+        _eta(0.2),
         _nint_rel_err(0.01) {}
   ABCNumericModel(const std::vector<double>& sigma)
       : _sigma(sigma),
         _delta(),
         _q_pdf_den(false),
         _omega(1),
-        _xi(1.0),
+        _xi(5.0),
         _epsilon(0.1),
+        _eta(0.2),
         _nint_rel_err(0.01) {
     init();
   }
@@ -80,6 +82,10 @@ class ABCNumericModel : public Model {
     _epsilon = epsilon;
     _q_pdf_den = false;
   }
+  inline void set_eta(const double& eta) {
+    _eta = eta;
+    _q_pdf_den = false;
+  }
   inline void set_xi(const double& xi) {
     _xi = xi;
     _q_pdf_den = false;
@@ -96,6 +102,7 @@ class ABCNumericModel : public Model {
   }
   double pdf_delta___delta_mu(const double& delta_next) const;
   double pdf_delta__mu(const std::vector<double>& delta) const;
+  double pdf_delta__mu__2D(const std::vector<double>& delta) const;
   inline double pdf_delta__mu() const { return pdf_delta__mu(_delta); }
   double pdf_delta__mu(const double& delta_next) const;
 
@@ -109,6 +116,7 @@ class ABCNumericModel : public Model {
   int _omega;
   double _xi;
   double _epsilon;
+  double _eta;
   // parameter for the cubature integration
   double _nint_rel_err;  // 1%
 };

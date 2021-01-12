@@ -8,6 +8,15 @@
 #include <iostream>
 #include <limits>
 #include <list>
+#include <random>
+
+namespace {
+
+/// random numbers
+std::mt19937_64 mt{};
+std::uniform_real_distribution<double> dist(0., 1.);
+
+}  // namespace
 
 namespace miho {
 
@@ -20,6 +29,8 @@ template int sgn<int>(const int&);
 template int sgn<double>(const double&);
 
 bool is_approx(const double& x, const double& y) {
+  /// check the numbers are finite
+  if ( !std::isfinite(x) || !std::isfinite(y) ) return false;
   // 1.0 is here because epsilon is the smallest difference
   // that can be distinguished from 1.0
   double max_val = std::max({1.0, std::fabs(x), std::fabs(y)});
@@ -271,24 +282,27 @@ double nintegrate_1D(std::function<double(double)> func, const double& x_low,
     double y;
   };
   std::list<Node> nodes;
-  const double target_accuracy = 1e-6;
-  const size_t max_nodes = 100;
+  const double target_accuracy = 1e-5;
+  const size_t max_nodes = 5000;
 
   double result = 0.;
   double error = 0.;
 
+  if (is_approx(x_low, x_upp)) return 0.;
+  // if (x_low > x_upp) return -nintegrate_1D(func, x_upp, x_low);
+  if (x_low > x_upp) throw "nintegrate_1D: invalid range";
+
   // init with two equidistant bins
   Node nlow;
-  nlow.x = (x_low + x_upp) / 4.;
+  nlow.x = (x_low + x_upp) / 2. - (x_upp - x_low) / 4.;
   nlow.y = func(nlow.x);
   nodes.emplace_front(nlow);
   Node nupp;
-  nupp.x = (x_low + x_upp) * 3. / 4.;
+  nupp.x = (x_low + x_upp) / 2. + (x_upp - x_low) / 4.;
   nupp.y = func(nupp.x);
   nodes.emplace_back(nupp);
 
   while (nodes.size() < max_nodes) {
-
     // fmt::print("-: ({})\n",x_low);
     // size_t cnt = 0;
     // for (auto it = nodes.begin(); it != nodes.end(); ++it) {
@@ -352,44 +366,44 @@ double nintegrate_1D(std::function<double(double)> func, const double& x_low,
   return result;
 }
 
-// input: list of delta: 1==d_0, ..., d_n-1
-// output: list of transitions: infty == a_0 >= ... >= a_n == 0
-std::vector<double> new_a_list(const std::vector<double>& delta) {
-  auto n_delta = delta.size();
 
-  std::vector<double> a;
-  a.reserve(n_delta + 1);
+std::vector<double> a_list(const std::vector<double>& delta, bool invert) {
+  const auto n_delta = delta.size();
+  std::vector<double> a(n_delta + 1, 0.);
 
-  // "guesses"
-  a.push_back(std::numeric_limits<double>::infinity());  // a[0]
+  /// "guesses"
+  a[0] = std::numeric_limits<double>::infinity();
+  a[n_delta] = 0.;
+  if (invert) {
+    a[0] = 0.;
+    a[n_delta] = std::numeric_limits<double>::infinity();
+  }
   for (auto i = 1; i < n_delta; ++i) {
     if (delta[i - 1] != 0.) {
-      a.push_back(std::fabs(delta[i] / delta[i - 1]));
+      a[i] = std::fabs(delta[i] / delta[i - 1]);
     } else {
-      a.push_back(std::numeric_limits<double>::infinity());
+      a[i] = std::numeric_limits<double>::infinity();
     }
   }
-  a.push_back(0.);  // a[n]
 
-  // patch conflicts
+  /// patch conflicts
   int i_low = n_delta;
   int i_upp = 0;
-  // double val = -1.;
   while (true) {
     bool hit = false;
     for (auto i = 1; i < n_delta; ++i) {
-      if (a[i] < a[i + 1]) {
+      if ((!invert && a[i] < a[i + 1]) || (invert && a[i] > a[i + 1])) {
         hit = true;
         if ((i == i_low - 1) || (i == i_upp)) {
-          // we're extending a previous range
+          /// we're extending a previous range
           i_low = std::min(i_low, i);
           i_upp = std::max(i_upp, i + 1);
         } else {
-          // a start of a new range
+          /// a start of a new range
           i_low = i;
           i_upp = i + 1;
         }
-        // merge
+        /// merge
         double val = 0.;
         if (delta[i_low - 1] != 0.) {
           val = std::fabs(delta[i_upp] / delta[i_low - 1]);
@@ -397,9 +411,6 @@ std::vector<double> new_a_list(const std::vector<double>& delta) {
           val = std::numeric_limits<double>::infinity();
         }
         val = std::pow(val, 1. / double(i_upp - i_low + 1));
-        // std::cout << "merging range [" << i_low << "," << i_upp << "] = " <<
-        // val
-        //           << std::endl;
         for (auto j = i_low; j <= i_upp; ++j) {
           a[j] = val;
         }
@@ -411,5 +422,184 @@ std::vector<double> new_a_list(const std::vector<double>& delta) {
 
   return a;
 }
+
+
+std::vector<double> max_a_list(std::vector<double> delta) {
+  /// drop all negative values
+  auto is_negative = [](const double& d_i) { return d_i < 0.; };
+  std::replace_if(delta.begin(), delta.end(), is_negative, 0.);
+  return a_list(delta);
+}
+
+
+std::vector<double> min_a_list(std::vector<double> delta) {
+  /// if there's at least one negative delta
+  ///   -> run max on the flipped numbers
+  auto is_negative = [](const double& d_i) { return d_i < 0.; };
+  if (std::any_of(delta.begin(), delta.end(), is_negative)) {
+    std::transform(delta.begin(), delta.end(), delta.begin(),
+                   [](const double& d_i) { return d_i > 0. ? 0. : -d_i; });
+    return a_list(delta);
+  }
+  /// all values are positive from here on
+  ///   -> run inverted
+  return a_list(delta, true);
+}
+
+std::map<std::pair<int, int>, std::pair<double, double>> min_max_partitions(
+    const std::vector<double>& delta, const double& max_val) {
+  std::map<std::pair<int, int>, std::pair<double, double>> result;
+
+  std::vector<double> min_a = min_a_list(delta);
+  std::vector<double> max_a = max_a_list(delta);
+
+  // std::cerr << "min_max_partitions\n";
+  // std::cerr << "min_a: [";
+  // for (const auto & a : min_a) std::cerr << " " << a;
+  // std::cerr << " ]\n";
+  // std::cerr << "max_a: [";
+  // for (const auto & a : max_a) std::cerr << " " << a;
+  // std::cerr << " ]\n";
+
+  const int m = delta.size();
+  std::pair<int, int> key;
+
+  if (min_a.back() == 0.) {
+    /// min_a & max_a have same ordering
+    // std::cerr << "min_a & max_a have same ordering\n";
+    double a_low = 0.;
+    int k_min = m;
+    int k_max = m;
+    while ((k_min > 0) && (k_max > 0)) {
+      // std::cerr << " [" << a_low << ",";
+      /// skip empty intervals
+      while (k_min > 1 && min_a[k_min] < max_val &&
+             is_approx(min_a[k_min], min_a[k_min - 1]))
+        --k_min;
+      while (k_max > 1 && max_a[k_max] < max_val &&
+             is_approx(max_a[k_max], max_a[k_max - 1]))
+        --k_max;
+      key = std::pair<int, int>(k_min - 1, k_max - 1);
+      if (min_a[k_min - 1] < max_a[k_max - 1]) {
+        --k_min;
+        if (min_a[k_min] >= max_val) {
+          result.emplace(key, std::pair<double, double>(a_low, max_val));
+          break;
+        }
+        result.emplace(key, std::pair<double, double>(a_low, min_a[k_min]));
+        a_low = min_a[k_min];
+      } else {
+        --k_max;
+        if (max_a[k_max] >= max_val) {
+          result.emplace(key, std::pair<double, double>(a_low, max_val));
+          break;
+        }
+        result.emplace(key, std::pair<double, double>(a_low, max_a[k_max]));
+        a_low = max_a[k_max];
+      }
+      // std::cerr << a_low << "] " << key.first << " & " << key.second << "\n";
+    }
+
+  } else {
+    /// min_a has reverted ordering w.r.t. a_max
+    // std::cerr << "min_a has reverted ordering w.r.t. a_max\n";
+    double a_low = 0.;
+    int k_min = 0;
+    int k_max = m;
+    while ((k_min < m) && (k_max > 0)) {
+      // std::cerr << " [" << a_low << ",";
+      /// skip empty intervals
+      while (k_min < m && min_a[k_min] < max_val &&
+             is_approx(min_a[k_min + 1], min_a[k_min]))
+        ++k_min;
+      while (k_max > 1 && max_a[k_max] < max_val &&
+             is_approx(max_a[k_max], max_a[k_max - 1]))
+        --k_max;
+      key = std::pair<int, int>(k_min, k_max - 1);
+      if (min_a[k_min + 1] < max_a[k_max - 1]) {
+        ++k_min;
+        if (min_a[k_min] >= max_val) {
+          result.emplace(key, std::pair<double, double>(a_low, max_val));
+          break;
+        }
+        result.emplace(key, std::pair<double, double>(a_low, min_a[k_min]));
+        a_low = min_a[k_min];
+      } else {
+        --k_max;
+        if (max_a[k_max] >= max_val) {
+          result.emplace(key, std::pair<double, double>(a_low, max_val));
+          break;
+        }
+        result.emplace(key, std::pair<double, double>(a_low, max_a[k_max]));
+        a_low = max_a[k_max];
+      }
+      // std::cerr << a_low << "] " << key.first << " & " << key.second << "\n";
+    }
+  }
+  return result;
+}
+
+/// find min/max value for `delta_k / a^k`
+std::pair<double, double> get_min_max(const double& a,
+                                      const std::vector<double>& delta) {
+  double max_val = 1.;  // (i = 0) case
+  double min_val = 1.;
+  double a_pow_i = 1.;  // accumulate a-powers
+  for (auto i = 1; i < delta.size(); ++i) {
+    a_pow_i *= a;  // a_pow_i = a^i
+    const double dtest = delta.at(i) / a_pow_i;
+    if (dtest > max_val) max_val = dtest;
+    if (dtest < min_val) min_val = dtest;
+  }
+  return std::make_pair(min_val, max_val);
+}
+
+std::pair<double, double> get_min_max_check(const double& a,
+                                            const std::vector<double>& delta) {
+  auto parts =
+      min_max_partitions(delta, std::numeric_limits<double>::infinity());
+  for (const std::pair<std::pair<int, int>, std::pair<double, double>>& p :
+       parts) {
+    // std::cerr << "[" << p.first.first << "," << p.first.second << "] -> ["
+    //           << p.second.first << "," << p.second.second << "]\n";
+    if ((p.second.first < a) && (p.second.second >= a)) {
+      // std::cerr << "  -->  " << p.second.first << " < " << a << " < "
+      //           << p.second.second << std::endl;
+      return std::make_pair(
+          delta.at(p.first.first) / std::pow(a, p.first.first),
+          delta.at(p.first.second) / std::pow(a, p.first.second));
+    }
+  }
+
+  return std::make_pair(0., 0.);
+
+  // /// find the [a_k, a_{k+1}] interval of the max piece
+  // std::vector<double> a_max = miho::max_a_list(delta);
+  // int k_max = -1;
+  // for (auto i = 1; i < a_max.size(); ++i) {
+  //   if ((a_max.at(i - 1) > a) && (a_max.at(i) <= a)) {
+  //     k_max = i - 1;
+  //     break;
+  //   }
+  // }
+  // double max_val = delta.at(k_max) / std::pow(a, k_max);
+  // /// find the [a_k, a_{k+1}] interval of the min piece
+  // std::vector<double> a_min = miho::min_a_list(delta);
+  // int k_min = -1;
+  // for (auto i = 1; i < a_min.size(); ++i) {
+  //   const double a_k_low = std::min(a_min.at(i - 1), a_min.at(i));
+  //   const double a_k_upp = std::max(a_min.at(i - 1), a_min.at(i));
+  //   if ((a_k_low < a) && (a_k_upp >= a)) {
+  //     k_min = i - 1;
+  //     break;
+  //   }
+  // }
+  // double min_val = delta.at(k_min) / std::pow(a, k_min);
+  // return std::make_pair(min_val, max_val);
+
+}
+
+void set_rand_seed(int seed_number) { mt.seed(seed_number); }
+double rand() { return dist(mt); }
 
 }  // namespace miho

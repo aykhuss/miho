@@ -1,6 +1,6 @@
+#include <fmt/args.h>
 #include <fmt/color.h>
 #include <fmt/format.h>
-#include <fmt/args.h>
 
 #include <CLI/CLI.hpp>
 #include <cmath>
@@ -19,6 +19,7 @@
 #include "Scale1DModel.h"
 #include "Scale2DGeometricModel.h"
 #include "Scale2DModel.h"
+#include "Util.h"
 
 // fwd declare some functions
 std::vector<double> parse_input(std::istream& data_stream);
@@ -37,7 +38,7 @@ int main(int argc, char const* argv[]) {
   //> PDF settings
   bool flag_pdf = false;
   app.add_flag("--pdf", flag_pdf, "Print out the probability distribution.");
-  size_t nmax = 2000;
+  size_t nmax = 5000;
   app.add_option("--nmax", nmax,
                  "Set the maximum number of PDF evaluations (default: 5000).");
   double accuracy = 0.005;  // default: 0.5%
@@ -76,11 +77,14 @@ int main(int argc, char const* argv[]) {
   int abc_omg = 1;
   app_abc->add_option("--omega", abc_omg,
                       "Model parameter for the prior of 'a' (default: 1).");
-  double abc_xi = 1.;
+  double abc_xi = 2.;
   app_abc->add_option("--xi", abc_xi,
-                      "Model parameter for the prior of 'b' (default: 1.).");
+                      "Model parameter for the prior of 'b' (default: 2.).");
   double abc_eps = 0.1;
   app_abc->add_option("--epsilon", abc_eps,
+                      "Model parameter for the prior of 'c' (default: 0.1).");
+  double abc_eta = 0.1;
+  app_abc->add_option("--eta", abc_eta,
                       "Model parameter for the prior of 'c' (default: 0.1).");
   // 1D scale
   CLI::App* app_scl1gm = app.add_subcommand(
@@ -191,6 +195,7 @@ int main(int argc, char const* argv[]) {
     abc.set_omega(abc_omg);
     abc.set_xi(abc_xi);
     abc.set_epsilon(abc_eps);
+    abc.set_eta(abc_eta);
 
     if (*app_scl1d) {
       //### 1D scale
@@ -454,8 +459,8 @@ void print_format(std::string format_string,
   //> maybe cache mean to save time for stdev?
   // if (std::regex_search(format_string, std::regex("\\{mean\\}")) ||
   //     std::regex_search(format_string, std::regex("\\{stdev\\}"))) {
-  //   double mean = model->mean();  // first compute the mean o recycle adaption
-  //   double stdev = model->stdev();
+  //   double mean = model->mean();  // first compute the mean o recycle
+  //   adaption double stdev = model->stdev();
   //   format_arg_list.push_back(fmt::arg("mean", mean));
   //   format_arg_list.push_back(fmt::arg("stdev", stdev));
   // }

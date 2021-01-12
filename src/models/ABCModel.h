@@ -9,25 +9,69 @@ namespace miho {
 
 class ABCModel : public Model {
  public:
+  ABCModel()
+      : _sigma(),
+        _delta(),
+        _q_pdf_den(false),
+        _omega(1),
+        _xi(5.0),
+        _epsilon(0.1),
+        _eta(0.2) {}
   ABCModel(const std::vector<double>& sigma)
-      : _sigma(sigma), _delta(), _epsilon(0.1), _xi(1.0), _omega(1) {
-    _n_orders = sigma.size();
+      : _sigma(sigma),
+        _delta(),
+        _q_pdf_den(false),
+        _omega(1),
+        _xi(5.0),
+        _epsilon(0.1),
+        _eta(0.2) {
+    init();
+  }
+
+  inline void set_sigma(const std::vector<double>& sigma) {
+    _sigma = sigma;
+    _q_pdf_den = false;
+    init();
+  }
+
+  void init() {
+    // std::cout << "ABCModel - init - " << _omega << ", " << _epsilon
+    //           << std::endl;
+    // update everything after changing _sigma
+    clear();  // clear cached nodes
+    _n_orders = _sigma.size();
+    _delta.clear();
     _delta.reserve(_n_orders);
     // Eq.(3.4)
-    _delta.push_back(1.);  // normalised w.r.t. LO <-> sigma[0]
+    _delta.push_back(1.);  // normalised w.r.t. LO <-> _sigma[0]
+    // std::cerr << "ABCModel::init [" << _delta.back();
     for (auto i = 1; i < _n_orders; ++i) {
-      _delta.push_back((sigma[i] - sigma[i - 1]) / sigma[0]);
+      _delta.push_back((_sigma[i] - _sigma[i - 1]) / _sigma[0]);
+      // std::cerr << ", " << _delta.back();
     }
-    // std::cout << "# ABCModel: " << _n_orders << " \n";
-    // for (auto i = 0; i < sigma.size(); ++i) {
-    //   std::cout << "# > " << sigma[i] << ", " << _sigma[i] << ":\t" <<
-    //   _delta[i]
-    //             << std::endl;
-    // }
+    // std::cerr << "] " << std::endl;
   }
 
   double sigma(int order) const { return _sigma.at(order); };
   double pdf(const double& val) const;
+
+  // setters
+  inline void set_epsilon(const double& epsilon) {
+    _epsilon = epsilon;
+    _q_pdf_den = false;
+  }
+  inline void set_eta(const double& eta) {
+    _eta = eta;
+    _q_pdf_den = false;
+  }
+  inline void set_xi(const double& xi) {
+    _xi = xi;
+    _q_pdf_den = false;
+  }
+  inline void set_omega(int omega) {
+    _omega = omega;
+    _q_pdf_den = false;
+  }
 
   // additional public member functions
   inline double delta_next(const double& sigma_next) const {
@@ -38,33 +82,20 @@ class ABCModel : public Model {
   inline double pdf_delta__mu() const { return pdf_delta__mu(_delta); }
   double pdf_delta__mu(const double& delta_next) const;
 
-  static double a_integral(const double& a_lower, const double& a_upper,
-                           const double& alpha, const double& beta,
-                           const double& epsilon, int l, int i, int j, int m);
-  static double a_master(const double& p, const double& q, const double& r,
-                         const double& A, const double& B);
-  static double a_integral2(const double& a_lower, const double& a_upper,
-                            const double& alpha, int l, int i);
-
-  static double a_nintegral(const double& a_lower, const double& a_upper,
-                            const double& alpha, const double& beta,
-                            const double& epsilon, int l, int i, int j, int m);
-  static double a_nintegral2(const double& a_lower, const double& a_upper,
-                             const double& alpha, int l, int i);
+  double II(int s, const double& alpha, const std::vector<double>& delta) const;
 
  protected:
   std::vector<double> _sigma;
   std::vector<double> _delta;
+  // cache denominator
+  mutable bool _q_pdf_den;
+  mutable double _pdf_den;
   // parameters of the model
-  double _epsilon;
-  double _xi;
   int _omega;
+  double _xi;
+  double _epsilon;
+  double _eta;
 
- private:
-  // duplicate the infrastructure for the brute-force 1D integration until I
-  // have the analytic result
-  double a_integrand(const double& a, const std::vector<double>& delta) const;
-  double a_nint(const std::vector<double>& delta) const;
 };
 
 }  // namespace miho
