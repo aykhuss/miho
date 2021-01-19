@@ -25,6 +25,9 @@ class Model {
   inline size_t n_orders() const { return _n_orders; };
   virtual double pdf(const double& val) const = 0;
 
+  // /// The factory design pattern
+  // static std::unique_ptr<Model> create(ModelType model_type);
+
   void adapt_integration(std::function<double(double)> func,
                          std::function<double(double)> rewgt = f_one);
   double integrate(std::function<double(double)> func);

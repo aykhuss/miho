@@ -4,10 +4,11 @@
 #include <vector>
 
 #include "Model.h"
+#include "ModelPrototype.h"
 
 namespace miho {
 
-class ABCModel : public Model {
+class ABCModel : public ModelPrototype {
  public:
   ABCModel()
       : _sigma(),
@@ -16,7 +17,8 @@ class ABCModel : public Model {
         _omega(1),
         _xi(5.0),
         _epsilon(0.1),
-        _eta(0.2) {}
+        _eta(0.2),
+        _nint_rel_err(0.01) {}
   ABCModel(const std::vector<double>& sigma)
       : _sigma(sigma),
         _delta(),
@@ -24,11 +26,12 @@ class ABCModel : public Model {
         _omega(1),
         _xi(5.0),
         _epsilon(0.1),
-        _eta(0.2) {
+        _eta(0.2),
+        _nint_rel_err(0.01) {
     init();
   }
 
-  inline void set_sigma(const std::vector<double>& sigma) {
+  inline void set_sigma(const std::vector<double>& sigma) override {
     _sigma = sigma;
     _q_pdf_den = false;
     init();
@@ -52,8 +55,13 @@ class ABCModel : public Model {
     // std::cerr << "] " << std::endl;
   }
 
-  double sigma(int order) const { return _sigma.at(order); };
-  double pdf(const double& val) const;
+  /// Model interface
+  double sigma(int order) const override { return _sigma.at(order); };
+  double pdf(const double& val) const override;
+  /// ModelPrototype interface
+  std::unique_ptr<ModelPrototype> clone() const override {
+    return std::make_unique<ABCModel>(*this);
+  }
 
   // setters
   inline void set_epsilon(const double& epsilon) {
@@ -72,6 +80,7 @@ class ABCModel : public Model {
     _omega = omega;
     _q_pdf_den = false;
   }
+  inline void set_nint_rel_err(const double& acc) { _nint_rel_err = acc; }
 
   // additional public member functions
   inline double delta_next(const double& sigma_next) const {
@@ -79,10 +88,9 @@ class ABCModel : public Model {
   }
   double pdf_delta___delta_mu(const double& delta_next) const;
   double pdf_delta__mu(const std::vector<double>& delta) const;
+  double pdf_delta__mu__2D(const std::vector<double>& delta) const;
   inline double pdf_delta__mu() const { return pdf_delta__mu(_delta); }
   double pdf_delta__mu(const double& delta_next) const;
-
-  double II(int s, const double& alpha, const std::vector<double>& delta) const;
 
  protected:
   std::vector<double> _sigma;
@@ -95,7 +103,8 @@ class ABCModel : public Model {
   double _xi;
   double _epsilon;
   double _eta;
-
+  // parameter for the cubature integration
+  double _nint_rel_err;  // 1%
 };
 
 }  // namespace miho

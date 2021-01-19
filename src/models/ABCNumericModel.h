@@ -4,10 +4,11 @@
 #include <vector>
 
 #include "Model.h"
+#include "ModelPrototype.h"
 
 namespace miho {
 
-class ABCNumericModel : public Model {
+class ABCNumericModel : public ModelPrototype {
  public:
   ABCNumericModel()
       : _sigma(),
@@ -30,7 +31,7 @@ class ABCNumericModel : public Model {
     init();
   }
 
-  inline void set_sigma(const std::vector<double>& sigma) {
+  inline void set_sigma(const std::vector<double>& sigma) override {
     _sigma = sigma;
     _q_pdf_den = false;
     init();
@@ -52,30 +53,15 @@ class ABCNumericModel : public Model {
       // std::cerr << ", " << _delta.back();
     }
     // std::cerr << "] " << std::endl;
-
-    /// a quick run to get an idea of the cubature accuracy that we need
-    auto old_target_accuracy = _target_accuracy;
-    auto old_max_nodes = _max_nodes;
-    /// low-quality run
-    set_accuracy(0.03);
-    set_max_nodes(100);
-    set_nint_rel_err(0.03);
-    std::pair<double, double> dob = degree_of_belief_interval();
-    clear();  // delete the low-accuracy nodes
-    double auto_acc =
-        std::fabs((dob.first - dob.second) / (dob.first + dob.second));
-    if (auto_acc > 0.007) auto_acc = 0.007;
-    set_nint_rel_err(auto_acc);
-    // std::cerr << "ABCNumericModel::init auto-accuracy: " << auto_acc << " [" << dob.first
-    //           << ", " << dob.second << "]" << std::endl;
-    /// restore
-    set_accuracy(old_target_accuracy);
-    set_max_nodes(old_max_nodes);
-
   }
 
-  double sigma(int order) const { return _sigma.at(order); };
-  double pdf(const double& val) const;
+  /// Model interface
+  double sigma(int order) const override { return _sigma.at(order); };
+  double pdf(const double& val) const override;
+  /// ModelPrototype interface
+  std::unique_ptr<ModelPrototype> clone() const override {
+    return std::make_unique<ABCNumericModel>(*this);
+  }
 
   // setters
   inline void set_epsilon(const double& epsilon) {

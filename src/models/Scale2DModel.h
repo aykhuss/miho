@@ -3,6 +3,7 @@
 #include <map>
 
 #include "Model.h"
+#include "ModelPrototype.h"
 
 namespace miho {
 
@@ -13,10 +14,11 @@ class Scale2DModel : public Model {
   double pdf(const double& val) const;
   // use Move eventually!
   void add_model(const std::pair<double, double> fac_mu,
-                 std::shared_ptr<miho::Model> model) {
+                 std::shared_ptr<miho::ModelPrototype> model) {
     // std::cout << "# add_model: _n_orders = " << _n_orders << std::endl;
-    _scale_models.insert(std::pair<Scale2D, std::shared_ptr<miho::Model>>(
-        Scale2D(fac_mu.first, fac_mu.second), model));
+    _scale_models.insert(
+        std::pair<Scale2D, std::shared_ptr<miho::ModelPrototype>>(
+            Scale2D(fac_mu.first, fac_mu.second), model));
     if (_n_orders == 0) {
       _n_orders = model->n_orders();
     } else if (_n_orders != model->n_orders()) {
@@ -46,7 +48,7 @@ class Scale2DModel : public Model {
   double pdf_gauss_legendre(const double& val) const;
 
   bool _use_gauss_legendre;
-  std::map<Scale2D, std::shared_ptr<miho::Model>> _scale_models;
+  std::map<Scale2D, std::shared_ptr<miho::ModelPrototype>> _scale_models;
 };
 
 }  // namespace miho

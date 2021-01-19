@@ -4,10 +4,26 @@
 
 #include <cmath>
 #include <iostream>
-#include <list>
 #include <limits>
+#include <list>
+
+// #include "ABCModel.h"
+// #include "GeometricModel.h"
 
 namespace miho {
+
+// std::unique_ptr<Model> Model::create(ModelType model_type) {
+//   switch (model_type) {
+//     case ModelType::geo:
+//       return std::make_unique<GeometricModel>();
+//       break;
+//     case ModelType::abc:
+//       return std::make_unique<ABCModel>();
+//       break;
+//     default:
+//       throw "Model::create: model not registered";
+//   }
+// }
 
 const std::function<double(double)> Model::f_one = [](double x) { return 1.; };
 const std::function<double(double)> Model::f_wgt = [](double x) {

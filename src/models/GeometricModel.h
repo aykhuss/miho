@@ -4,10 +4,11 @@
 #include <vector>
 
 #include "Model.h"
+#include "ModelPrototype.h"
 
 namespace miho {
 
-class GeometricModel : public Model {
+class GeometricModel : public ModelPrototype {
  public:
   GeometricModel()
       : _sigma(), _delta(), _q_pdf_den(false), _omega(1), _epsilon(0.1) {}
@@ -16,7 +17,7 @@ class GeometricModel : public Model {
     init();
   }
 
-  inline void set_sigma(const std::vector<double>& sigma) {
+  inline void set_sigma(const std::vector<double>& sigma) override {
     _sigma = sigma;
     _q_pdf_den = false;
     init();
@@ -37,8 +38,13 @@ class GeometricModel : public Model {
     }
   }
 
-  double sigma(int order) const { return _sigma.at(order); };
-  double pdf(const double& val) const;
+  /// Model interface
+  double sigma(int order) const override { return _sigma.at(order); };
+  double pdf(const double& val) const override;
+  /// ModelPrototype interface
+  std::unique_ptr<ModelPrototype> clone() const override {
+    return std::make_unique<GeometricModel>(*this);
+  }
 
   // setters
   inline void set_epsilon(const double& epsilon) {

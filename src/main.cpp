@@ -15,16 +15,14 @@
 #include "ABCNumericModel.h"
 #include "GeometricModel.h"
 #include "Model.h"
-#include "Scale1DGeometricModel.h"
 #include "Scale1DModel.h"
-#include "Scale2DGeometricModel.h"
 #include "Scale2DModel.h"
 #include "Util.h"
 
 // fwd declare some functions
 std::vector<double> parse_input(std::istream& data_stream);
 std::vector<std::vector<double>> parse_data_file(const std::string& file_name);
-void print_format(std::string, std::shared_ptr<miho::Model>);
+void print_format(std::string, std::unique_ptr<miho::Model>&);
 
 int main(int argc, char const* argv[]) {
   CLI::App app{"ミホ (miho) - theory uncertainties from MIssing Higher Orders"};
@@ -65,13 +63,13 @@ int main(int argc, char const* argv[]) {
   //----- subcommands to choose the model
   app.require_subcommand(/* min */ 1, /* max */ 1);
   //> standard geometric
-  CLI::App* app_gm = app.add_subcommand("geo", "Use the GeometricModel.");
-  int gm_omg = 1;
-  app_gm->add_option("--omega", gm_omg,
-                     "Model parameter for the prior of 'a' (default: 1).");
-  double gm_eps = 0.1;
-  app_gm->add_option("--epsilon", gm_eps,
-                     "Model parameter for the prior of 'c' (default: 0.1).");
+  CLI::App* app_geo = app.add_subcommand("geo", "Use the GeometricModel.");
+  int geo_omg = 1;
+  app_geo->add_option("--omega", geo_omg,
+                      "Model parameter for the prior of 'a' (default: 1).");
+  double geo_eps = 0.1;
+  app_geo->add_option("--epsilon", geo_eps,
+                      "Model parameter for the prior of 'c' (default: 0.1).");
   //> ABC model
   CLI::App* app_abc = app.add_subcommand("abc", "Use the ABCModel.");
   int abc_omg = 1;
@@ -86,266 +84,262 @@ int main(int argc, char const* argv[]) {
   double abc_eta = 0.1;
   app_abc->add_option("--eta", abc_eta,
                       "Model parameter for the prior of 'c' (default: 0.1).");
-  // 1D scale
-  CLI::App* app_scl1gm = app.add_subcommand(
-      "scale1d", "Use the GeometricModel marginalising over one scale.");
-  std::vector<double> scl1_vec;
-  app_scl1gm->add_option("--scales", scl1_vec, "The scale factors.")
-      ->excludes(app_file);
-  bool scl1_gl = false;
-  app_scl1gm->add_flag("--gauss-legendre", scl1_gl,
-                       "Use the 3-point Gauss–Legendre quadrature.");
-  // 2D scale
-  CLI::App* app_scl2gm = app.add_subcommand(
-      "scale2d", "Use the GeometricModel marginalising over two scales.");
-  std::vector<std::pair<double, double>> scl2_vec;
-  app_scl2gm->add_option("--scales", scl2_vec, "The scale factors as pairs.")
-      ->excludes(app_file);
-  bool scl2_gl = false;
-  app_scl2gm->add_flag("--gauss-legendre", scl2_gl,
-                       "Use the 3-point Gauss–Legendre quadrature.");
 
   CLI11_PARSE(app, argc, argv);
 
-  std::shared_ptr<miho::Model> cli_model = nullptr;
-
-  //----- GeometricModel
-  if (app.got_subcommand(app_gm)) {
+  /// set the underlying prototype model with the correct settings
+  std::unique_ptr<miho::ModelPrototype> proto_model = nullptr;
+  if (app.got_subcommand(app_geo)) {
     fmt::print("# GeometricModel\n");
-    //> create a bare Model object with the correct model settings
-    miho::GeometricModel gm;
-    gm.set_omega(gm_omg);
-    gm.set_epsilon(gm_eps);
-
-    if (*app_scl1d) {
-      //### 1D scale
-      // fmt::print("entered app_scl1d\n");
-      std::shared_ptr<miho::Scale1DModel> scl1d =
-          std::shared_ptr<miho::Scale1DModel>(new miho::Scale1DModel());
-      scl1d->use_gauss_legendre(scl_gl);
-      if (*app_file) {
-        std::vector<std::vector<double>> data = parse_data_file(file_name);
-        for (std::vector<double> record : data) {
-          double scl = record.front();
-          std::vector<double> sigma(record.begin() + 1, record.end());
-          gm.set_sigma(sigma);
-          scl1d->add_model(scl, std::make_shared<miho::GeometricModel>(gm));
-        }
-      } else {
-        for (const auto& scl : vec_scl1d) {
-          fmt::print(
-              "# Enter XS[{}×μ₀] values @ LO NLO ... separated by spaces: \n",
-              scl);
-          std::vector<double> sigma = parse_input(std::cin);
-          gm.set_sigma(sigma);
-          scl1d->add_model(scl, std::make_shared<miho::GeometricModel>(gm));
-        }
-      }
-      cli_model = scl1d;
-    } else if (*app_scl2d) {
-      //### 2D scale
-      // fmt::print("entered app_scl2d\n");
-      std::shared_ptr<miho::Scale2DModel> scl2d =
-          std::shared_ptr<miho::Scale2DModel>(new miho::Scale2DModel());
-      scl2d->use_gauss_legendre(scl_gl);
-      if (*app_file) {
-        std::vector<std::vector<double>> data = parse_data_file(file_name);
-        for (std::vector<double> record : data) {
-          std::pair<double, double> scl{record.at(0), record.at(1)};
-          std::vector<double> sigma(record.begin() + 2, record.end());
-          gm.set_sigma(sigma);
-          scl2d->add_model(scl, std::make_shared<miho::GeometricModel>(gm));
-        }
-      } else {
-        for (const auto& scl : vec_scl2d) {
-          fmt::print(
-              "# Enter XS[{}×μ₀,{}×μ₀] values @ LO NLO ... separated by "
-              "spaces: "
-              "\n",
-              scl.first, scl.second);
-          std::vector<double> sigma = parse_input(std::cin);
-          gm.set_sigma(sigma);
-          scl2d->add_model(scl, std::make_shared<miho::GeometricModel>(gm));
-        }
-      }
-      cli_model = scl2d;
-    } else {
-      //### just numbers
-      std::vector<double> sigma;
-      if (*app_file) {
-        std::vector<std::vector<double>> data = parse_data_file(file_name);
-        if (data.size() != 1) {
-          throw std::runtime_error(file_name + " contains != 1 record(s)");
-        }
-        sigma = data.front();
-      } else {
-        fmt::print("# Enter XS values @ LO NLO ... separated by spaces: \n");
-        sigma = parse_input(std::cin);
-      }
-      gm.set_sigma(sigma);
-      cli_model = std::make_shared<miho::GeometricModel>(gm);
-    }
+    auto gm = std::make_unique<miho::GeometricModel>();
+    gm->set_omega(geo_omg);
+    gm->set_epsilon(geo_eps);
+    proto_model = std::move(gm);
+  } else if (app.got_subcommand(app_abc)) {
+    fmt::print("# ABCModel\n");
+    auto abc = std::make_unique<miho::ABCModel>();
+    abc->set_omega(abc_omg);
+    abc->set_xi(abc_xi);
+    abc->set_epsilon(abc_eps);
+    abc->set_eta(abc_eta);
+    proto_model = std::move(abc);
+  } else {
+    fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold,
+               "\nno model selected!\n\n");
+    std::cout << app.help() << std::endl;
+    return 1;
   }
 
-  //----- ABCModel
-  if (app.got_subcommand(app_abc)) {
-    fmt::print("# ABCNumericModel\n");
-    //> create a bare Model object with the correct model settings
-    miho::ABCNumericModel abc;
-    abc.set_omega(abc_omg);
-    abc.set_xi(abc_xi);
-    abc.set_epsilon(abc_eps);
-    abc.set_eta(abc_eta);
-
-    if (*app_scl1d) {
-      //### 1D scale
-      // fmt::print("entered app_scl1d\n");
-      std::shared_ptr<miho::Scale1DModel> scl1d =
-          std::shared_ptr<miho::Scale1DModel>(new miho::Scale1DModel());
-      scl1d->use_gauss_legendre(scl_gl);
-      if (*app_file) {
-        std::vector<std::vector<double>> data = parse_data_file(file_name);
-        for (std::vector<double> record : data) {
-          double scl = record.front();
-          std::vector<double> sigma(record.begin() + 1, record.end());
-          abc.set_sigma(sigma);
-          scl1d->add_model(scl, std::make_shared<miho::ABCNumericModel>(abc));
-        }
-      } else {
-        for (const auto& scl : vec_scl1d) {
-          fmt::print(
-              "# Enter XS[{}×μ₀] values @ LO NLO ... separated by spaces: \n",
-              scl);
-          std::vector<double> sigma = parse_input(std::cin);
-          abc.set_sigma(sigma);
-          scl1d->add_model(scl, std::make_shared<miho::ABCNumericModel>(abc));
-        }
-      }
-      cli_model = scl1d;
-    } else if (*app_scl2d) {
-      //### 2D scale
-      // fmt::print("entered app_scl2d\n");
-      std::shared_ptr<miho::Scale2DModel> scl2d =
-          std::shared_ptr<miho::Scale2DModel>(new miho::Scale2DModel());
-      scl2d->use_gauss_legendre(scl_gl);
-      if (*app_file) {
-        std::vector<std::vector<double>> data = parse_data_file(file_name);
-        for (std::vector<double> record : data) {
-          std::pair<double, double> scl{record.at(0), record.at(1)};
-          std::vector<double> sigma(record.begin() + 2, record.end());
-          abc.set_sigma(sigma);
-          scl2d->add_model(scl, std::make_shared<miho::ABCNumericModel>(abc));
-        }
-      } else {
-        for (const auto& scl : vec_scl2d) {
-          fmt::print(
-              "# Enter XS[{}×μ₀,{}×μ₀] values @ LO NLO ... separated by "
-              "spaces: "
-              "\n",
-              scl.first, scl.second);
-          std::vector<double> sigma = parse_input(std::cin);
-          abc.set_sigma(sigma);
-          scl2d->add_model(scl, std::make_shared<miho::ABCNumericModel>(abc));
-        }
-      }
-      cli_model = scl2d;
-    } else {
-      //### just numbers
-      std::vector<double> sigma;
-      if (*app_file) {
-        std::vector<std::vector<double>> data = parse_data_file(file_name);
-        if (data.size() != 1) {
-          throw std::runtime_error(file_name + " contains != 1 record(s)");
-        }
-        sigma = data.front();
-      } else {
-        fmt::print("# Enter XS values @ LO NLO ... separated by spaces: \n");
-        sigma = parse_input(std::cin);
-      }
-      abc.set_sigma(sigma);
-      cli_model = std::make_shared<miho::ABCNumericModel>(abc);
-    }
-  }
-
-  //----- Scale1DGeometricModel
-  if (app.got_subcommand(app_scl1gm)) {
-    fmt::print("# Scale1DGeometricModel\n");
-
-    // std::cout << "# Scales you entered: ";
-    // std::copy(scl1_vec.begin(), scl1_vec.end(),
-    //           std::ostream_iterator<double>(std::cout, " "));
-    // std::cout << '\n';
-
-    std::shared_ptr<miho::Scale1DGeometricModel> scl1gm =
-        std::shared_ptr<miho::Scale1DGeometricModel>(
-            new miho::Scale1DGeometricModel());
-
-    scl1gm->use_gauss_legendre(scl1_gl);
-
+  /// set the final model (possible scale marginalisations, etc...)
+  std::unique_ptr<miho::Model> cli_model = nullptr;
+  if (*app_scl1d) {
+    //### 1D scale
+    // fmt::print("entered app_scl1d\n");
+    auto scl1d = std::make_unique<miho::Scale1DModel>();
+    scl1d->use_gauss_legendre(scl_gl);
     if (*app_file) {
       std::vector<std::vector<double>> data = parse_data_file(file_name);
       for (std::vector<double> record : data) {
         double scl = record.front();
         std::vector<double> sigma(record.begin() + 1, record.end());
-        scl1gm->add_model(scl, miho::GeometricModel(sigma));
+        auto clone_model = proto_model->clone();
+        clone_model->set_sigma(sigma);
+        scl1d->add_model(scl, std::move(clone_model));
       }
     } else {
-      for (const auto& scl : scl1_vec) {
+      for (const auto& scl : vec_scl1d) {
         fmt::print(
             "# Enter XS[{}×μ₀] values @ LO NLO ... separated by spaces: \n",
             scl);
         std::vector<double> sigma = parse_input(std::cin);
-        // std::cout << "# Numbers you entered: ";
-        // std::copy(sigma.begin(), sigma.end(),
-        //           std::ostream_iterator<double>(std::cout, " "));
-        // std::cout << '\n';
-        scl1gm->add_model(scl, miho::GeometricModel(sigma));
+        auto clone_model = proto_model->clone();
+        clone_model->set_sigma(sigma);
+        scl1d->add_model(scl, std::move(clone_model));
       }
     }
-
-    cli_model = scl1gm;
-  }
-
-  //----- Scale2DGeometricModel
-  if (app.got_subcommand(app_scl2gm)) {
-    fmt::print("# Scale2DGeometricModel\n");
-
-    std::cout << "# Scales you entered: ";
-    for (const auto& scl : scl2_vec) {
-      fmt::print("[{},{}] ", scl.first, scl.second);
-    }
-    fmt::print("\n");
-
-    std::shared_ptr<miho::Scale2DGeometricModel> scl2gm =
-        std::shared_ptr<miho::Scale2DGeometricModel>(
-            new miho::Scale2DGeometricModel());
-
-    scl2gm->use_gauss_legendre(scl2_gl);
-
+    cli_model = std::move(scl1d);
+  } else if (*app_scl2d) {
+    //### 2D scale
+    // fmt::print("entered app_scl2d\n");
+    auto scl2d = std::make_unique<miho::Scale2DModel>();
+    scl2d->use_gauss_legendre(scl_gl);
     if (*app_file) {
       std::vector<std::vector<double>> data = parse_data_file(file_name);
       for (std::vector<double> record : data) {
         std::pair<double, double> scl{record.at(0), record.at(1)};
         std::vector<double> sigma(record.begin() + 2, record.end());
-        scl2gm->add_model(scl, miho::GeometricModel(sigma));
+        auto clone_model = proto_model->clone();
+        clone_model->set_sigma(sigma);
+        scl2d->add_model(scl, std::move(clone_model));
       }
     } else {
-      for (const auto& scl : scl2_vec) {
+      for (const auto& scl : vec_scl2d) {
         fmt::print(
-            "# Enter XS[{}×μ₀,{}×μ₀] values @ LO NLO ... separated by spaces: "
+            "# Enter XS[{}×μ₀,{}×μ₀] values @ LO NLO ... separated by "
+            "spaces: "
             "\n",
             scl.first, scl.second);
         std::vector<double> sigma = parse_input(std::cin);
-        // std::cout << "# Numbers you entered: ";
-        // std::copy(sigma.begin(), sigma.end(),
-        //           std::ostream_iterator<double>(std::cout, " "));
-        // std::cout << '\n';
-        scl2gm->add_model(scl, miho::GeometricModel(sigma));
+        auto clone_model = proto_model->clone();
+        clone_model->set_sigma(sigma);
+        scl2d->add_model(scl, std::move(clone_model));
       }
     }
-
-    cli_model = scl2gm;
+    cli_model = std::move(scl2d);
+  } else {
+    //### just numbers
+    std::vector<double> sigma;
+    if (*app_file) {
+      std::vector<std::vector<double>> data = parse_data_file(file_name);
+      if (data.size() != 1) {
+        throw std::runtime_error(file_name + " contains != 1 record(s)");
+      }
+      sigma = data.front();
+    } else {
+      fmt::print("# Enter XS values @ LO NLO ... separated by spaces: \n");
+      sigma = parse_input(std::cin);
+    }
+    proto_model->set_sigma(sigma);
+    cli_model = std::move(proto_model);
   }
+
+  //  //----- GeometricModel
+  //  if (app.got_subcommand(app_gm)) {
+  //    fmt::print("# GeometricModel\n");
+  //    //> create a bare Model object with the correct model settings
+  //    miho::GeometricModel gm;
+  //    gm.set_omega(gm_omg);
+  //    gm.set_epsilon(gm_eps);
+  //
+  //    if (*app_scl1d) {
+  //      //### 1D scale
+  //      // fmt::print("entered app_scl1d\n");
+  //      std::shared_ptr<miho::Scale1DModel> scl1d =
+  //          std::shared_ptr<miho::Scale1DModel>(new miho::Scale1DModel());
+  //      scl1d->use_gauss_legendre(scl_gl);
+  //      if (*app_file) {
+  //        std::vector<std::vector<double>> data = parse_data_file(file_name);
+  //        for (std::vector<double> record : data) {
+  //          double scl = record.front();
+  //          std::vector<double> sigma(record.begin() + 1, record.end());
+  //          gm.set_sigma(sigma);
+  //          scl1d->add_model(scl, std::make_shared<miho::GeometricModel>(gm));
+  //        }
+  //      } else {
+  //        for (const auto& scl : vec_scl1d) {
+  //          fmt::print(
+  //              "# Enter XS[{}×μ₀] values @ LO NLO ... separated by spaces:
+  //              \n", scl);
+  //          std::vector<double> sigma = parse_input(std::cin);
+  //          gm.set_sigma(sigma);
+  //          scl1d->add_model(scl, std::make_shared<miho::GeometricModel>(gm));
+  //        }
+  //      }
+  //      cli_model = scl1d;
+  //    } else if (*app_scl2d) {
+  //      //### 2D scale
+  //      // fmt::print("entered app_scl2d\n");
+  //      std::shared_ptr<miho::Scale2DModel> scl2d =
+  //          std::shared_ptr<miho::Scale2DModel>(new miho::Scale2DModel());
+  //      scl2d->use_gauss_legendre(scl_gl);
+  //      if (*app_file) {
+  //        std::vector<std::vector<double>> data = parse_data_file(file_name);
+  //        for (std::vector<double> record : data) {
+  //          std::pair<double, double> scl{record.at(0), record.at(1)};
+  //          std::vector<double> sigma(record.begin() + 2, record.end());
+  //          gm.set_sigma(sigma);
+  //          scl2d->add_model(scl, std::make_shared<miho::GeometricModel>(gm));
+  //        }
+  //      } else {
+  //        for (const auto& scl : vec_scl2d) {
+  //          fmt::print(
+  //              "# Enter XS[{}×μ₀,{}×μ₀] values @ LO NLO ... separated by "
+  //              "spaces: "
+  //              "\n",
+  //              scl.first, scl.second);
+  //          std::vector<double> sigma = parse_input(std::cin);
+  //          gm.set_sigma(sigma);
+  //          scl2d->add_model(scl, std::make_shared<miho::GeometricModel>(gm));
+  //        }
+  //      }
+  //      cli_model = scl2d;
+  //    } else {
+  //      //### just numbers
+  //      std::vector<double> sigma;
+  //      if (*app_file) {
+  //        std::vector<std::vector<double>> data = parse_data_file(file_name);
+  //        if (data.size() != 1) {
+  //          throw std::runtime_error(file_name + " contains != 1 record(s)");
+  //        }
+  //        sigma = data.front();
+  //      } else {
+  //        fmt::print("# Enter XS values @ LO NLO ... separated by spaces:
+  //        \n"); sigma = parse_input(std::cin);
+  //      }
+  //      gm.set_sigma(sigma);
+  //      cli_model = std::make_shared<miho::GeometricModel>(gm);
+  //    }
+  //  }
+  //
+  //  //----- ABCModel
+  //  if (app.got_subcommand(app_abc)) {
+  //    fmt::print("# ABCModel\n");
+  //    //> create a bare Model object with the correct model settings
+  //    miho::ABCModel abc;
+  //    abc.set_omega(abc_omg);
+  //    abc.set_xi(abc_xi);
+  //    abc.set_epsilon(abc_eps);
+  //    abc.set_eta(abc_eta);
+  //
+  //    if (*app_scl1d) {
+  //      //### 1D scale
+  //      // fmt::print("entered app_scl1d\n");
+  //      std::shared_ptr<miho::Scale1DModel> scl1d =
+  //          std::shared_ptr<miho::Scale1DModel>(new miho::Scale1DModel());
+  //      scl1d->use_gauss_legendre(scl_gl);
+  //      if (*app_file) {
+  //        std::vector<std::vector<double>> data = parse_data_file(file_name);
+  //        for (std::vector<double> record : data) {
+  //          double scl = record.front();
+  //          std::vector<double> sigma(record.begin() + 1, record.end());
+  //          abc.set_sigma(sigma);
+  //          scl1d->add_model(scl, std::make_shared<miho::ABCModel>(abc));
+  //        }
+  //      } else {
+  //        for (const auto& scl : vec_scl1d) {
+  //          fmt::print(
+  //              "# Enter XS[{}×μ₀] values @ LO NLO ... separated by spaces:
+  //              \n", scl);
+  //          std::vector<double> sigma = parse_input(std::cin);
+  //          abc.set_sigma(sigma);
+  //          scl1d->add_model(scl, std::make_shared<miho::ABCModel>(abc));
+  //        }
+  //      }
+  //      cli_model = scl1d;
+  //    } else if (*app_scl2d) {
+  //      //### 2D scale
+  //      // fmt::print("entered app_scl2d\n");
+  //      std::shared_ptr<miho::Scale2DModel> scl2d =
+  //          std::shared_ptr<miho::Scale2DModel>(new miho::Scale2DModel());
+  //      scl2d->use_gauss_legendre(scl_gl);
+  //      if (*app_file) {
+  //        std::vector<std::vector<double>> data = parse_data_file(file_name);
+  //        for (std::vector<double> record : data) {
+  //          std::pair<double, double> scl{record.at(0), record.at(1)};
+  //          std::vector<double> sigma(record.begin() + 2, record.end());
+  //          abc.set_sigma(sigma);
+  //          scl2d->add_model(scl, std::make_shared<miho::ABCModel>(abc));
+  //        }
+  //      } else {
+  //        for (const auto& scl : vec_scl2d) {
+  //          fmt::print(
+  //              "# Enter XS[{}×μ₀,{}×μ₀] values @ LO NLO ... separated by "
+  //              "spaces: "
+  //              "\n",
+  //              scl.first, scl.second);
+  //          std::vector<double> sigma = parse_input(std::cin);
+  //          abc.set_sigma(sigma);
+  //          scl2d->add_model(scl, std::make_shared<miho::ABCModel>(abc));
+  //        }
+  //      }
+  //      cli_model = scl2d;
+  //    } else {
+  //      //### just numbers
+  //      std::vector<double> sigma;
+  //      if (*app_file) {
+  //        std::vector<std::vector<double>> data = parse_data_file(file_name);
+  //        if (data.size() != 1) {
+  //          throw std::runtime_error(file_name + " contains != 1 record(s)");
+  //        }
+  //        sigma = data.front();
+  //      } else {
+  //        fmt::print("# Enter XS values @ LO NLO ... separated by spaces:
+  //        \n"); sigma = parse_input(std::cin);
+  //      }
+  //      abc.set_sigma(sigma);
+  //      cli_model = std::make_shared<miho::ABCModel>(abc);
+  //    }
+  //  }
 
   //> check that cli_model is set, otherwise scream for help & die
   if (cli_model == nullptr) {
@@ -425,7 +419,7 @@ std::vector<std::vector<double>> parse_data_file(const std::string& file_name) {
 }
 
 void print_format(std::string format_string,
-                  std::shared_ptr<miho::Model> model) {
+                  std::unique_ptr<miho::Model>& model) {
   fmt::dynamic_format_arg_store<fmt::format_context> format_arg_list;
   if (std::regex_search(format_string, std::regex("\\{median\\}"))) {
     double median = model->median();
