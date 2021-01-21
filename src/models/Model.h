@@ -34,7 +34,7 @@ class Model {
 
   inline double norm() { return integrate(f_one); }
   inline double moment(int p) {
-    return integrate([=](double x) { return std::pow(x, p); });
+    return integrate([p](double x) { return std::pow(x, p); });
   }
   inline double mean() {
     // double old_target_accuracy = _target_accuracy;
@@ -50,7 +50,8 @@ class Model {
     // return moment(2) - std::pow(mean(), 2);
     // much better convergence this way:
     double mean_val = mean();
-    return integrate([=](double x) { return std::pow(x - mean_val, 2); });
+    return integrate(
+        [mean_val](double x) { return std::pow(x - mean_val, 2); });
     // double old_target_accuracy = _target_accuracy;
     // set_accuracy(_target_accuracy / 4.);
     // double result =

@@ -95,15 +95,15 @@ class ABCModel : public ModelPrototype {
  protected:
   std::vector<double> _sigma;
   std::vector<double> _delta;
-  // cache denominator
+  /// cache denominator
   mutable bool _q_pdf_den;
   mutable double _pdf_den;
-  // parameters of the model
+  /// parameters of the model
   int _omega;
   double _xi;
   double _epsilon;
   double _eta;
-  // parameter for the cubature integration
+  /// parameter for the cubature integration
   double _nint_rel_err;  // 1%
 };
 

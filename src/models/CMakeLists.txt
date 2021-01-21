@@ -21,6 +21,7 @@ target_sources(models
     ${CMAKE_CURRENT_LIST_DIR}/GeometricModel.h
     ${CMAKE_CURRENT_LIST_DIR}/ABCModel.h
     ${CMAKE_CURRENT_LIST_DIR}/ABCNumericModel.h
+    ${CMAKE_CURRENT_LIST_DIR}/ScaleModel.h
     ${CMAKE_CURRENT_LIST_DIR}/Scale1DModel.h
     ${CMAKE_CURRENT_LIST_DIR}/Scale2DModel.h
   )

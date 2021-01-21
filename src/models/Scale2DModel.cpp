@@ -8,13 +8,13 @@
 namespace miho {
 
 double Scale2DModel::sigma(int order) const {
-  // try to return the central scale choice
+  /// try to return the central scale choice
   for (const auto& mod : _scale_models) {
     if (mod.first.fac_muR == 1. && mod.first.fac_muF == 1.) {
       return mod.second->sigma(order);
     }
   }
-  // no central scale found: return the first one
+  /// no central scale found: return the first one
   return _scale_models.begin()->second->sigma(order);
 }
 
