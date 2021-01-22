@@ -10,8 +10,8 @@ namespace miho {
 class Scale1DModel : public Model {
  public:
   Scale1DModel() : _use_gauss_legendre(false), _scale_models() {}
-  double sigma(int order) const;
-  double pdf(const double& val) const;
+  double sigma(int order) const override;
+  double pdf(const double& val) const override;
   // use Move eventually!
   void add_model(const double& fac_mu,
                  std::shared_ptr<miho::ModelPrototype> model) {

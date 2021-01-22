@@ -19,59 +19,8 @@ struct ABCdata {
   int omega;
 };
 
-int ab_integrand(unsigned ndim, const double* x, void* fdata, unsigned fdim,
-                 double* fval) {
-  if (ndim != 2) return 1;
-  if (fdim != 1) return 1;
-  fval[0] = 0.;
-  double result = 1.;
-
-  //> a mapping
-  double a = x[0];
-  // // for numerical stability
-  if (miho::is_approx(a, 0.)) a = std::numeric_limits<double>::epsilon();
-
-  //> b-mapping
-  //>  (a) x/(1-x^2)
-  // // const double omx1sq = 1. - x[1] * x[1];
-  // const double omx1sq = (1. - x[1]) * (1. + x[1]);  // more stable
-  // const double b = x[1] / omx1sq;
-  // result *= (1. + x[1] * x[1]) / (omx1sq * omx1sq);  // Jac for b-mapping
-  //>  (b) arctanh(x)
-  const double b = std::atanh(x[1]);
-  result /= (1. - x[1]) * (1. + x[1]);  // Jac for b-mapping
-
-  const ABCdata* abc = (ABCdata*)fdata;
-  double m = abc->delta.size() - 1.;  // counting starts at 0
-  /// some a-factors combined with max_val for stability
-  result *= (1. + abc->omega) * abc->epsilon *
-            std::pow(abc->eta, abc->epsilon) / std::pow(2., m + 3.) / abc->xi;
-  /// a-integrand
-  result *= std::pow(1. - std::fabs(a), abc->omega) /
-            std::pow(std::fabs(a), m * (m + 1.) / 2.);
-  /// c integration constants
-  result /= (m + 2. + abc->epsilon);
-  /// find max value (absorbs factor of a^(m/2) for numerical stability)
-  double max_val = std::max(abc->eta, std::fabs(b) / abc->xi);
-  double del_fac = 1.;  // accumulate a-powers
-  for (auto i = 0; i < abc->delta.size(); ++i) {
-    double dtest = std::fabs(abc->delta.at(i) * del_fac - b);
-    del_fac /= a;  // del_fac = 1 / a^i on nxt iter
-    if (dtest > max_val) max_val = dtest;
-  }
-  result /= std::pow(max_val, m + 2. + abc->epsilon);
-  /// done.
-  if (!std::isfinite(result)) {
-    std::cerr << "#ab_integrand: problem for a = " << a << ", b = " << b
-              << std::endl;
-    return 0;
-  }
-  fval[0] = result;
-  return 0;  // success
-}
-
 int a_integrand(unsigned ndim, const double* x, void* fdata, unsigned fdim,
-                 double* fval) {
+                double* fval) {
   if (ndim != 1) return 1;
   if (fdim != 1) return 1;
   fval[0] = 0.;
@@ -88,7 +37,7 @@ int a_integrand(unsigned ndim, const double* x, void* fdata, unsigned fdim,
   /// find R & r
   double R = abc->delta[0];  // max
   double r = abc->delta[0];  // min
-  double del_fac = 1.;  // accumulate a-powers
+  double del_fac = 1.;       // accumulate a-powers
   for (auto i = 1; i < abc->delta.size(); ++i) {
     del_fac /= a;  // del_fac = 1 / a^i on nxt iter
     double dtest = abc->delta[i] * del_fac;
@@ -119,7 +68,7 @@ int a_integrand(unsigned ndim, const double* x, void* fdata, unsigned fdim,
      *  2:         1
      *  3:         (R - b)
      *  4:         -b / xi
-    */
+     */
     const double mpope = m + 1 + abc->epsilon;
     double b_upp = std::numeric_limits<double>::infinity();
     double b_next;
@@ -171,7 +120,7 @@ int a_integrand(unsigned ndim, const double* x, void* fdata, unsigned fdim,
      *  2:         1
      *  3:         -b / xi
      *  4:         (R - b)
-    */
+     */
     // std::cout << "\n";
     // std::cout << "r = " << r << "\n";
     // std::cout << "R = " << R << "\n";
@@ -188,7 +137,7 @@ int a_integrand(unsigned ndim, const double* x, void* fdata, unsigned fdim,
     };
     /// interval: 0
     set_next(1, (-r) * abc->xi / (1 - abc->xi));
-    set_next(2, 1+r);
+    set_next(2, 1 + r);
     set_next(3, abc->xi / (1 + abc->xi) * r);
     set_next(4, (R + r) / 2.);
     acc += std::pow(b_next - r, -mpope) / mpope;
@@ -226,7 +175,6 @@ int a_integrand(unsigned ndim, const double* x, void* fdata, unsigned fdim,
     acc += std::pow(R - b_upp, -mpope) / mpope;
     // std::cout << "interval 4: " << b_next<< " | " << acc << "\n";
     // std::cin.ignore();
-
   }
 
   /// combine to final result
@@ -246,21 +194,6 @@ int a_integrand(unsigned ndim, const double* x, void* fdata, unsigned fdim,
 }  // namespace
 
 namespace miho {
-
-double ABCNumericModel::pdf(const double& val) const {
-  // Eq.(3.14) : assumes j == 1
-  return pdf_delta___delta_mu(delta_next(val)) / std::fabs(_sigma.front());
-}
-
-double ABCNumericModel::pdf_delta___delta_mu(const double& delta_next) const {
-  // Eq.(4.10) : assumes j == 1
-  if (!_q_pdf_den) {
-    _pdf_den = pdf_delta__mu(_delta);
-    _q_pdf_den = true;
-  }
-  double pdf_num = pdf_delta__mu(delta_next);
-  return pdf_num / _pdf_den;
-}
 
 double ABCNumericModel::pdf_delta__mu(const std::vector<double>& delta) const {
   //----- cubature library
@@ -298,76 +231,6 @@ double ABCNumericModel::pdf_delta__mu(const std::vector<double>& delta) const {
   const auto m = delta.size() - 1;
   return val[0] / std::pow(_eta, m + 1) * (1 + _omega) * _epsilon / _xi /
          std::pow(2, m + 3) / (m + 2 + _epsilon);
-}
-
-double ABCNumericModel::pdf_delta__mu__2D(const std::vector<double>& delta) const {
-  //----- cubature library
-  size_t maxEval = 100000;
-  double reqAbsError = 0.;
-  double reqRelError = std::min(_nint_rel_err, _target_accuracy);
-  // reqRelError *= 5.;  // init value (n_loop > 1)
-  // a = x[0] from [-1,1]
-  // b <-> x[1] from [-1,1] mapped to [-intfy, +infty]
-  const double xmin[2] = {-1. + std::numeric_limits<float>::epsilon(),
-                          -1. + std::numeric_limits<float>::epsilon()};
-  const double xmax[2] = {+1. - std::numeric_limits<float>::epsilon(),
-                          +1. - std::numeric_limits<float>::epsilon()};
-  double val[1], err[1];
-  /// package up struct
-  ABCdata fdata = {delta, _epsilon, _eta, _xi, _omega};
-  // if (!is_approx(_eta, 1.)) {
-  //   std::transform(fdata.delta.begin(), fdata.delta.end(), fdata.delta.begin(),
-  //                  [fdata](const double& del) { return del / fdata.eta; });
-  // }
-
-  double val_last = 0.;
-  double err_last = -1.;
-  int count = 0;
-  while (true) {
-    count++;
-    hcubature(1, ab_integrand, &fdata, 2, xmin, xmax, maxEval, reqAbsError,
-              reqRelError, ERROR_INDIVIDUAL, val, err);
-
-    if (!std::isfinite(val[0])) {
-      std::cerr << "pdf_delta__mu__2D: problem for delta[last] = " << delta.back()
-                << std::endl;
-      return 0.;
-    }
-
-    if (err_last > 0. && is_approx(val[0] + val_last, 0.)) break;
-    // if (err_last > 0. &&
-    //     std::fabs((val[0] - val_last) / (val[0] + val_last)) < _nint_rel_err) {
-    //   break;
-    // }
-    if ((err_last > 0.) &&
-        ((std::fabs(val[0] - val_last) <
-          3. * std::sqrt(err[0] * err[0] + err_last * err_last)) ||
-         (std::fabs((val[0] - val_last) / (val[0] + val_last)) <
-          _target_accuracy))) {
-      break;
-    }
-    if (count >= 7) {
-      // std::cerr << "pdf_delta__mu__2D: couldn't find plateau in " << count
-      //           << " steps  (acc = " << _nint_rel_err << " -> " << reqRelError
-      //           << ")" << std::endl;
-      // std::cerr << "last: " << val_last << " +- " << err_last << std::endl;
-      // std::cerr << "curr: " << val[0] << " +- " << err[0] << std::endl;
-      break;
-    }
-
-    reqRelError /= 3.;
-    val_last = val[0];
-    err_last = err[0];
-  }
-  return val[0];
-
-  // return res_mc;
-}
-
-double ABCNumericModel::pdf_delta__mu(const double& delta_next) const {
-  std::vector<double> delta = _delta;
-  delta.push_back(delta_next);
-  return pdf_delta__mu(delta);
 }
 
 }  // namespace miho

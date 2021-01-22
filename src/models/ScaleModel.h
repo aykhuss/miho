@@ -30,6 +30,7 @@ class ScaleModel : public Model {
   using Scale_t = std::array<double, N>;
 
  public:
+  using Model::sigma;  /// avoid name hiding
   // ScaleModel() : _use_gauss_legendre(false), _scale_models() {}
 
   void add_model(const Scale_t& fac_mu, std::shared_ptr<ModelPrototype> model) {
@@ -104,6 +105,10 @@ class ScaleModel : public Model {
   /// std::lexicographical_compare
   std::map<Scale_t, std::shared_ptr<ModelPrototype>> _scale_models;
   std::array<std::vector<double>, N> _fac;
+
+  double pdf_weighted_sum(const double& val) const;
+  double pdf_scale_invariant(const double& val) const;
+
 
   double int_mu_trapezoid(
       std::function<double(const ModelPrototype&)> fun,

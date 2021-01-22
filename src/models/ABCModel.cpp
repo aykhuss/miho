@@ -21,7 +21,7 @@ struct ABCdata {
 };
 
 int a_integrand(unsigned ndim, const double* x, void* fdata, unsigned fdim,
-                 double* fval) {
+                double* fval) {
   if (ndim != 1) return 1;
   if (fdim != 1) return 1;
   fval[0] = 0.;
@@ -38,7 +38,7 @@ int a_integrand(unsigned ndim, const double* x, void* fdata, unsigned fdim,
   /// find R & r
   double R = abc->delta[0];  // max
   double r = abc->delta[0];  // min
-  double del_fac = 1.;  // accumulate a-powers
+  double del_fac = 1.;       // accumulate a-powers
   for (auto i = 1; i < abc->delta.size(); ++i) {
     del_fac /= a;  // del_fac = 1 / a^i on nxt iter
     double dtest = abc->delta[i] * del_fac;
@@ -69,7 +69,7 @@ int a_integrand(unsigned ndim, const double* x, void* fdata, unsigned fdim,
      *  2:         1
      *  3:         (R - b)
      *  4:         -b / xi
-    */
+     */
     const double mpope = m + 1 + abc->epsilon;
     double b_upp = std::numeric_limits<double>::infinity();
     double b_next;
@@ -121,7 +121,7 @@ int a_integrand(unsigned ndim, const double* x, void* fdata, unsigned fdim,
      *  2:         1
      *  3:         -b / xi
      *  4:         (R - b)
-    */
+     */
     // std::cout << "\n";
     // std::cout << "r = " << r << "\n";
     // std::cout << "R = " << R << "\n";
@@ -138,7 +138,7 @@ int a_integrand(unsigned ndim, const double* x, void* fdata, unsigned fdim,
     };
     /// interval: 0
     set_next(1, (-r) * abc->xi / (1 - abc->xi));
-    set_next(2, 1+r);
+    set_next(2, 1 + r);
     set_next(3, abc->xi / (1 + abc->xi) * r);
     set_next(4, (R + r) / 2.);
     acc += std::pow(b_next - r, -mpope) / mpope;
@@ -176,11 +176,11 @@ int a_integrand(unsigned ndim, const double* x, void* fdata, unsigned fdim,
     acc += std::pow(R - b_upp, -mpope) / mpope;
     // std::cout << "interval 4: " << b_next<< " | " << acc << "\n";
     // std::cin.ignore();
-
   }
 
   /// combine to final result
-  // result = acc * std::pow(1. - a, abc->omega) / std::pow(a, m * (m + 1.) / 2.);
+  // result = acc * std::pow(1. - a, abc->omega) / std::pow(a, m * (m + 1.)
+  // / 2.);
   result = acc * std::pow(a, abc->a_pow);
 
   /// done.
@@ -196,21 +196,6 @@ int a_integrand(unsigned ndim, const double* x, void* fdata, unsigned fdim,
 }  // namespace
 
 namespace miho {
-
-double ABCModel::pdf(const double& val) const {
-  // Eq.(3.14) : assumes j == 1
-  return pdf_delta___delta_mu(delta_next(val)) / std::fabs(_sigma.front());
-}
-
-double ABCModel::pdf_delta___delta_mu(const double& delta_next) const {
-  // Eq.(4.10) : assumes j == 1
-  if (!_q_pdf_den) {
-    _pdf_den = pdf_delta__mu(_delta);
-    _q_pdf_den = true;
-  }
-  double pdf_num = pdf_delta__mu(delta_next);
-  return pdf_num / _pdf_den;
-}
 
 double ABCModel::pdf_delta__mu(const std::vector<double>& delta) const {
   //----- cubature library
@@ -264,12 +249,6 @@ double ABCModel::pdf_delta__mu(const std::vector<double>& delta) const {
 
   return acc / std::pow(_eta, m + 1) * (1 + _omega) * _epsilon / _xi /
          std::pow(2, m + 3) / (m + 2 + _epsilon);
-}
-
-double ABCModel::pdf_delta__mu(const double& delta_next) const {
-  std::vector<double> delta = _delta;
-  delta.push_back(delta_next);
-  return pdf_delta__mu(delta);
 }
 
 }  // namespace miho

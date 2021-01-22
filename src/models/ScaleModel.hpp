@@ -16,17 +16,31 @@ double ScaleModel<N>::sigma(int order) const {
 
 template <std::size_t N>
 double ScaleModel<N>::pdf(const double& val) const {
-  std::cerr << "\n##### pdf[" << val << "]\n";
-  auto it_map = _scale_models.begin();
-  auto res =
-      int_mu_trapezoid([](const ModelPrototype& mod) { return mod.sigma(); }, it_map);
-  std::cerr << "##### result = " << res << "\n\n";
-  return res;
-  if (_use_gauss_legendre) {
-    return pdf_gauss_legendre(val);
-  } else {
-    return pdf_trapezoid(val);
+  switch (_marginalisation) {
+    case ScaleMarginalisation::weighted_sum:
+      return pdf_weighted_sum(val);
+    case ScaleMarginalisation::scale_invariant:
+      return pdf_scale_invariant(val);
+    default:
+      throw "ScaleModel::pdf: unknown marginalisation";
   }
+}
+
+
+template <std::size_t N>
+double ScaleModel<N>::pdf_weighted_sum(const double& val) const {
+  auto it_map = _scale_models.begin();
+  auto res = int_mu_trapezoid(
+      [&val](const ModelPrototype& mod) { return mod.pdf(val); }, it_map);
+  return res;
+}
+
+template <std::size_t N>
+double ScaleModel<N>::pdf_scale_invariant(const double& val) const {
+  auto it_map = _scale_models.begin();
+  auto res = int_mu_trapezoid(
+      [&val](const ModelPrototype& mod) { return mod.pdf(val); }, it_map);
+  return res;
 }
 
 template <std::size_t N>

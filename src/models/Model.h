@@ -13,16 +13,10 @@ namespace miho {
 
 class Model {
  public:
-  Model()
-      : _n_orders{0},
-        _target_accuracy{0.001},
-        _max_nodes{10000},
-        _min_nodes{10},
-        _nodes{} {}
   virtual ~Model() noexcept = default;
   virtual double sigma(int order) const = 0;
-  inline double sigma() const { return sigma(_n_orders - 1); };
-  inline size_t n_orders() const { return _n_orders; };
+  inline double sigma() const { return sigma(_n_orders - 1); }
+  inline size_t n_orders() const { return _n_orders; }
   virtual double pdf(const double& val) const = 0;
 
   // /// The factory design pattern
@@ -75,10 +69,10 @@ class Model {
   inline void clear() { _nodes.clear(); }
 
  protected:
-  size_t _n_orders;
-  double _target_accuracy;
-  size_t _max_nodes;
-  size_t _min_nodes;
+  size_t _n_orders = 0;
+  double _target_accuracy = 0.001;
+  size_t _max_nodes = 10000;
+  size_t _min_nodes = 10;
 
  private:
   static const std::function<double(double)> f_one;

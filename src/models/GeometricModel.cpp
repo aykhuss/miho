@@ -9,21 +9,6 @@
 
 namespace miho {
 
-double GeometricModel::pdf(const double& val) const {
-  // Eq.(3.14) : assumes j == 1
-  return pdf_delta___delta_mu(delta_next(val)) / std::fabs(_sigma.front());
-}
-
-double GeometricModel::pdf_delta___delta_mu(const double& delta_next) const {
-  // Eq.(4.10) : assumes j == 1
-  double pdf_num = pdf_delta__mu(delta_next);
-  if (!_q_pdf_den) {
-    _pdf_den = pdf_delta__mu(_delta);
-    _q_pdf_den = true;
-  }
-  return pdf_num / _pdf_den;
-}
-
 double GeometricModel::pdf_delta__mu(const std::vector<double>& delta) const {
   // Eq.(4.16) : assumes omega is int
   auto m = delta.size() - 1;  // counting starts at 0
@@ -53,12 +38,6 @@ double GeometricModel::pdf_delta__mu(const std::vector<double>& delta) const {
     acc_k += acc_j / pow(abs_del_k, m + _epsilon);
   }
   return acc_k * _epsilon * (1. + _omega) / std::pow(2., m) / (m + _epsilon);
-}
-
-double GeometricModel::pdf_delta__mu(const double& delta_next) const {
-  std::vector<double> delta = _delta;
-  delta.push_back(delta_next);
-  return pdf_delta__mu(delta);
 }
 
 std::vector<double> GeometricModel::a_list(const std::vector<double>& delta) {
