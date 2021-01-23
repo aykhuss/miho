@@ -6,7 +6,6 @@
 #include "Model.h"
 #include "Util.h"
 
-miho::GeometricModel gm({1., 2., 2.5, 2.6});
 
 TEST_CASE("binomial", "[Util]") {
   REQUIRE(miho::binomial(6, 3) == 20);
