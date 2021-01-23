@@ -15,19 +15,19 @@ class ABCModel : public ModelPrototype {
   /// setters
   inline void set_epsilon(const double& epsilon) {
     _epsilon = epsilon;
-    _q_pdf_den = false;
+    clear();  // clear caches
   }
   inline void set_eta(const double& eta) {
     _eta = eta;
-    _q_pdf_den = false;
+    clear();  // clear caches
   }
   inline void set_xi(const double& xi) {
     _xi = xi;
-    _q_pdf_den = false;
+    clear();  // clear caches
   }
   inline void set_omega(int omega) {
     _omega = omega;
-    _q_pdf_den = false;
+    clear();  // clear caches
   }
   inline void set_nint_rel_err(const double& acc) { _nint_rel_err = acc; }
 

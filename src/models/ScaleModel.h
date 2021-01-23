@@ -28,10 +28,10 @@ enum class ScaleMarginalisation { weighted_sum, scale_invariant };
 template <std::size_t N>
 class ScaleModel : public Model {
   using Scale_t = std::array<double, N>;
+  using MPFun_t = std::function<double(const ModelPrototype&)>;
 
  public:
   using Model::sigma;  /// avoid name hiding
-  // ScaleModel() : _use_gauss_legendre(false), _scale_models() {}
 
   void add_model(const Scale_t& fac_mu, std::shared_ptr<ModelPrototype> model) {
     // std::cout << "# add_model: _n_orders = " << _n_orders << std::endl;
@@ -42,11 +42,10 @@ class ScaleModel : public Model {
     } else if (_n_orders != model->n_orders()) {
       throw std::runtime_error("ScaleModel::add_model: order mismatch!");
     }
-    init();
-    _q_cached = false;
+    clear();
   }
 
-  void init() {
+  void init() const {
     // std::cerr << "=== init ===\n";
     int count = 0;
     for (const auto& mod : _scale_models) {
@@ -86,45 +85,51 @@ class ScaleModel : public Model {
   /// setters
   inline void use_gauss_legendre(bool flag) {
     _use_gauss_legendre = flag;
-    _q_cached = false;
+    clear();  // clear caches
     ///@todo if GL check for compatibility or "complete the the square"
   }
   inline void set_marginalisation(ScaleMarginalisation marg) {
     _marginalisation = marg;
-    _q_cached = false;
+    clear();  // clear caches
+  }
+
+ protected:
+  /// cache denominator
+  mutable bool _q_init = false;
+  mutable std::array<std::vector<double>, N> _fac;
+  mutable bool _q_pdf_den = false;
+  mutable double _pdf_den;
+  virtual void clear() override {
+    _q_init = false;
+    _q_pdf_den = false;
+    Model::clear();
   }
 
  private:
   bool _use_gauss_legendre = false;
   ScaleMarginalisation _marginalisation = ScaleMarginalisation::weighted_sum;
-  /// cache
-  mutable bool _q_cached = false;
-  mutable double _pdf_den;
 
   /// from C++20 on, no operator< so would need to pass to the map:
   /// std::lexicographical_compare
   std::map<Scale_t, std::shared_ptr<ModelPrototype>> _scale_models;
-  std::array<std::vector<double>, N> _fac;
 
   double pdf_weighted_sum(const double& val) const;
   double pdf_scale_invariant(const double& val) const;
 
+  /// integration over the scales(s)
+  double int_mu(MPFun_t fun) const;
 
   double int_mu_trapezoid(
-      std::function<double(const ModelPrototype&)> fun,
+      MPFun_t fun,
       typename std::map<Scale_t,
                         std::shared_ptr<ModelPrototype>>::const_iterator& it,
       int idim = 0) const;
-  double pdf_trapezoid(const double& val) const;
 
-  double int_gauss_legendre(
+  double int_mu_gauss_legendre(
       std::function<double(const ModelPrototype&)> fun,
       typename std::map<Scale_t,
                         std::shared_ptr<ModelPrototype>>::const_iterator& it,
       int idim = 0) const;
-  static constexpr std::array<double, 3> _weights_gauss_legendre = {
-      5. / 9., 8. / 9., 5. / 9.};
-  double pdf_gauss_legendre(const double& val) const;
 };
 
 }  // namespace miho

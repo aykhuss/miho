@@ -16,8 +16,6 @@
 #include "GeometricModel.h"
 #include "Model.h"
 #include "ScaleModel.h"
-#include "Scale1DModel.h"
-#include "Scale2DModel.h"
 #include "Util.h"
 
 // fwd declare some functions
@@ -45,17 +43,28 @@ int main(int argc, char const* argv[]) {
       "--accuracy", accuracy,
       "Set the relative target accuracy of the integration (default: 0.5%).");
   //> scale marginalisation settings
-  std::size_t sclNd;
-  CLI::Option* app_sclNd =
-      app.add_option("--sclNd", sclNd, "The # of independent scales.");
   std::vector<double> vec_scl1d;
   CLI::Option* app_scl1d =
       app.add_option("--scl1d", vec_scl1d, "A list of scale factors.");
-  std::vector<std::pair<double, double>> vec_scl2d;
+  std::vector<std::array<double,2>> vec_scl2d;
   CLI::Option* app_scl2d =
       app.add_option("--scl2d", vec_scl2d, "A list of pairs of scale factors.");
   bool scl_gl = false;
   app.add_flag("--gl", scl_gl, "Gauss–Legendre");
+
+  miho::ScaleMarginalisation scl_margin{
+      miho::ScaleMarginalisation::weighted_sum};
+  std::map<std::string, miho::ScaleMarginalisation> map_margin{
+      {"ws", miho::ScaleMarginalisation::weighted_sum},
+      {"weighted_sum", miho::ScaleMarginalisation::weighted_sum},
+      {"si", miho::ScaleMarginalisation::scale_invariant},
+      {"scale_invariant", miho::ScaleMarginalisation::scale_invariant}};
+  // CheckedTransformer translates and checks whether the results are either in
+  // one of the strings or in one of the translations already
+  app.add_option("-m,--marginalisation", scl_margin,
+                 "ScaleMarginalisation settings")
+      ->transform(CLI::CheckedTransformer(map_margin, CLI::ignore_case));
+
   // app_scl_gl->multi_option_policy(CLI::MultiOptionPolicy::Throw);
   app_scl1d->excludes(app_scl2d);
   app_scl2d->excludes(app_scl1d);
@@ -117,32 +126,16 @@ int main(int argc, char const* argv[]) {
   /// set the final model (possible scale marginalisations, etc...)
   std::unique_ptr<miho::Model> cli_model = nullptr;
 
-if (*app_sclNd) {
-    //### ND scale
-    // fmt::print("entered app_sclNd\n");
-    auto sclNd = std::make_unique<miho::ScaleModel<2>>();
-    sclNd->use_gauss_legendre(scl_gl);
-    if (*app_file) {
-      std::vector<std::vector<double>> data = parse_data_file(file_name);
-      for (std::vector<double> record : data) {
-        std::array<double, 2> scl({record.at(0), record.at(1)});
-        std::vector<double> sigma(record.begin() + 2, record.end());
-        auto clone_model = proto_model->clone();
-        clone_model->set_sigma(sigma);
-        sclNd->add_model(scl, std::move(clone_model));
-      }
-    }
-    cli_model = std::move(sclNd);
-
-  } else if (*app_scl1d) {
+if (*app_scl1d) {
     //### 1D scale
     // fmt::print("entered app_scl1d\n");
-    auto scl1d = std::make_unique<miho::Scale1DModel>();
+    auto scl1d = std::make_unique<miho::ScaleModel<1>>();
     scl1d->use_gauss_legendre(scl_gl);
+    scl1d->set_marginalisation(scl_margin);
     if (*app_file) {
       std::vector<std::vector<double>> data = parse_data_file(file_name);
-      for (std::vector<double> record : data) {
-        double scl = record.front();
+      for (const auto& record : data) {
+        std::array<double, 1> scl = {record.front()};
         std::vector<double> sigma(record.begin() + 1, record.end());
         auto clone_model = proto_model->clone();
         clone_model->set_sigma(sigma);
@@ -156,19 +149,20 @@ if (*app_sclNd) {
         std::vector<double> sigma = parse_input(std::cin);
         auto clone_model = proto_model->clone();
         clone_model->set_sigma(sigma);
-        scl1d->add_model(scl, std::move(clone_model));
+        scl1d->add_model({scl}, std::move(clone_model));
       }
     }
     cli_model = std::move(scl1d);
   } else if (*app_scl2d) {
     //### 2D scale
     // fmt::print("entered app_scl2d\n");
-    auto scl2d = std::make_unique<miho::Scale2DModel>();
+    auto scl2d = std::make_unique<miho::ScaleModel<2>>();
     scl2d->use_gauss_legendre(scl_gl);
+    scl2d->set_marginalisation(scl_margin);
     if (*app_file) {
       std::vector<std::vector<double>> data = parse_data_file(file_name);
-      for (std::vector<double> record : data) {
-        std::pair<double, double> scl{record.at(0), record.at(1)};
+      for (const auto& record : data) {
+        std::array<double, 2> scl = {record.at(0), record.at(1)};
         std::vector<double> sigma(record.begin() + 2, record.end());
         auto clone_model = proto_model->clone();
         clone_model->set_sigma(sigma);
@@ -180,7 +174,7 @@ if (*app_sclNd) {
             "# Enter XS[{}×μ₀,{}×μ₀] values @ LO NLO ... separated by "
             "spaces: "
             "\n",
-            scl.first, scl.second);
+            scl[0], scl[1]);
         std::vector<double> sigma = parse_input(std::cin);
         auto clone_model = proto_model->clone();
         clone_model->set_sigma(sigma);

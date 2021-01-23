@@ -18,11 +18,11 @@ class GeometricModel : public ModelPrototype {
   /// setters
   inline void set_epsilon(const double& epsilon) {
     _epsilon = epsilon;
-    _q_pdf_den = false;
+    clear();  // clear caches
   }
   inline void set_omega(int omega) {
     _omega = omega;
-    _q_pdf_den = false;
+    clear();  // clear caches
   }
 
   /// additional public member functions

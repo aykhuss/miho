@@ -66,13 +66,13 @@ class Model {
   }
   inline void set_max_nodes(size_t nmax) { _max_nodes = nmax; }
   inline void set_accuracy(const double& acc) { _target_accuracy = acc; }
-  inline void clear() { _nodes.clear(); }
 
  protected:
   size_t _n_orders = 0;
   double _target_accuracy = 0.001;
   size_t _max_nodes = 10000;
   size_t _min_nodes = 10;
+  virtual void clear() { _nodes.clear(); }
 
  private:
   static const std::function<double(double)> f_one;

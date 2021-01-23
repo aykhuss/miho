@@ -19,9 +19,8 @@ class ModelPrototype : public Model {
   /// external interface
   void set_sigma(const std::vector<double>& sigma) {
     _sigma = sigma;
-    _q_pdf_den = false;
     /// update everything after changing _sigma
-    clear();  // clear cached nodes
+    clear();  // clear caches
     _n_orders = _sigma.size();
     _delta.clear();
     _delta.reserve(_n_orders);
@@ -63,8 +62,13 @@ class ModelPrototype : public Model {
   std::vector<double> _sigma;
   std::vector<double> _delta;
   /// cache denominator
-  mutable bool _q_pdf_den;
+  mutable bool _q_pdf_den = false;
   mutable double _pdf_den;
+  virtual void clear() override {
+    _q_pdf_den = false;
+    Model::clear();
+  }
+
 };
 
 }  // namespace miho

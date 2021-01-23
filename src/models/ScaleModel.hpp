@@ -16,36 +16,55 @@ double ScaleModel<N>::sigma(int order) const {
 
 template <std::size_t N>
 double ScaleModel<N>::pdf(const double& val) const {
+  if (!_q_init) {
+    init();
+    _q_init = true;
+  }
   switch (_marginalisation) {
     case ScaleMarginalisation::weighted_sum:
+      // std::cerr << "PDF: weighted_sum\n";
       return pdf_weighted_sum(val);
     case ScaleMarginalisation::scale_invariant:
+      // std::cerr << "PDF: scale_invariant\n";
       return pdf_scale_invariant(val);
     default:
       throw "ScaleModel::pdf: unknown marginalisation";
   }
 }
 
-
 template <std::size_t N>
 double ScaleModel<N>::pdf_weighted_sum(const double& val) const {
-  auto it_map = _scale_models.begin();
-  auto res = int_mu_trapezoid(
-      [&val](const ModelPrototype& mod) { return mod.pdf(val); }, it_map);
-  return res;
+  // const auto norm = int_mu([&val](const ModelPrototype& mod) { return 1.; });
+  // std::cerr << "norm = " << norm << std::endl;
+  return int_mu([&val](const ModelPrototype& mod) { return mod.pdf(val); });
 }
 
 template <std::size_t N>
 double ScaleModel<N>::pdf_scale_invariant(const double& val) const {
+  if (!_q_pdf_den) {
+    _pdf_den =
+        int_mu([](const ModelPrototype& mod) { return mod.pdf_delta__mu(); });
+    _q_pdf_den = true;
+  }
+  const auto pdf_num = int_mu([&val](const ModelPrototype& mod) {
+    return mod.pdf_delta__mu(mod.delta_next(val)) / std::fabs(mod.sigma(0));
+  });
+  return pdf_num / _pdf_den;
+}
+
+template <std::size_t N>
+double ScaleModel<N>::int_mu(MPFun_t fun) const {
   auto it_map = _scale_models.begin();
-  auto res = int_mu_trapezoid(
-      [&val](const ModelPrototype& mod) { return mod.pdf(val); }, it_map);
-  return res;
+  if (_use_gauss_legendre) {
+    return int_mu_gauss_legendre(fun, it_map);
+  } else {
+    return int_mu_trapezoid(fun, it_map);
+  }
 }
 
 template <std::size_t N>
 double ScaleModel<N>::int_mu_trapezoid(
-    std::function<double(const ModelPrototype&)> fun,
+    MPFun_t fun,
     typename std::map<Scale_t, std::shared_ptr<ModelPrototype>>::const_iterator&
         it,
     int idim) const {
@@ -74,16 +93,17 @@ double ScaleModel<N>::int_mu_trapezoid(
     log_mu_last = log_mu_curr;
     fun_val_last = fun_val_curr;
   }
-  return result;
+  return result / (log(_fac.at(idim).back()) - log(_fac.at(idim).front()));
 }
 
-
 template <std::size_t N>
-double ScaleModel<N>::int_gauss_legendre(
-    std::function<double(const ModelPrototype&)> fun,
+double ScaleModel<N>::int_mu_gauss_legendre(
+    MPFun_t fun,
     typename std::map<Scale_t, std::shared_ptr<ModelPrototype>>::const_iterator&
         it,
     int idim) const {
+  constexpr std::array<double, 3> _weights_gauss_legendre = {5. / 9., 8. / 9.,
+                                                             5. / 9.};
   /// ended up at a "leaf": return the function evaluation
   if (idim >= N) {
     const double ret = fun(*(it->second));
@@ -99,21 +119,10 @@ double ScaleModel<N>::int_gauss_legendre(
     // std::cerr << "# ";
     // for (const auto& val : it->first) std::cerr << val << " ";
     // std::cerr << "\n";
-    result +=
-        _weights_gauss_legendre[iscl] * int_gauss_legendre(fun, it, idim + 1);
+    result += _weights_gauss_legendre[iscl] *
+              int_mu_gauss_legendre(fun, it, idim + 1);
   }
-  return result;
-}
-
-
-template <std::size_t N>
-double ScaleModel<N>::pdf_trapezoid(const double& val) const {
-  return 0.;
-}
-
-template <std::size_t N>
-double ScaleModel<N>::pdf_gauss_legendre(const double& val) const {
-  return 0.;
+  return result / 2.;  // 2 = sum(_weights_gauss_legendre)
 }
 
 }  // namespace miho
