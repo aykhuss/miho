@@ -12,7 +12,7 @@
 
 namespace miho {
 
-enum class ScaleMarginalisation { weighted_sum, scale_invariant };
+enum class ScalePrescription { scale_average, scale_marginalisation };
 
 /// would this be a better abstraction? maybe some other time...
 // template <std::size_t N>
@@ -88,8 +88,8 @@ class ScaleModel : public Model {
     clear();  // clear caches
     ///@todo if GL check for compatibility or "complete the the square"
   }
-  inline void set_marginalisation(ScaleMarginalisation marg) {
-    _marginalisation = marg;
+  inline void set_prescription(ScalePrescription prescr) {
+    _prescription = prescr;
     clear();  // clear caches
   }
 
@@ -107,14 +107,14 @@ class ScaleModel : public Model {
 
  private:
   bool _use_gauss_legendre = false;
-  ScaleMarginalisation _marginalisation = ScaleMarginalisation::weighted_sum;
+  ScalePrescription _prescription = ScalePrescription::scale_average;
 
   /// from C++20 on, no operator< so would need to pass to the map:
   /// std::lexicographical_compare
   std::map<Scale_t, std::shared_ptr<ModelPrototype>> _scale_models;
 
-  double pdf_weighted_sum(const double& val) const;
-  double pdf_scale_invariant(const double& val) const;
+  double pdf_scale_average(const double& val) const;
+  double pdf_scale_marginalisation(const double& val) const;
 
   /// integration over the scales(s)
   double int_mu(MPFun_t fun) const;

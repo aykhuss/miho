@@ -20,27 +20,27 @@ double ScaleModel<N>::pdf(const double& val) const {
     init();
     _q_init = true;
   }
-  switch (_marginalisation) {
-    case ScaleMarginalisation::weighted_sum:
-      // std::cerr << "PDF: weighted_sum\n";
-      return pdf_weighted_sum(val);
-    case ScaleMarginalisation::scale_invariant:
-      // std::cerr << "PDF: scale_invariant\n";
-      return pdf_scale_invariant(val);
+  switch (_prescription) {
+    case ScalePrescription::scale_average:
+      // std::cerr << "PDF: scale_average\n";
+      return pdf_scale_average(val);
+    case ScalePrescription::scale_marginalisation:
+      // std::cerr << "PDF: scale_marginalisation\n";
+      return pdf_scale_marginalisation(val);
     default:
-      throw "ScaleModel::pdf: unknown marginalisation";
+      throw "ScaleModel::pdf: unknown prescription";
   }
 }
 
 template <std::size_t N>
-double ScaleModel<N>::pdf_weighted_sum(const double& val) const {
+double ScaleModel<N>::pdf_scale_average(const double& val) const {
   // const auto norm = int_mu([&val](const ModelPrototype& mod) { return 1.; });
   // std::cerr << "norm = " << norm << std::endl;
   return int_mu([&val](const ModelPrototype& mod) { return mod.pdf(val); });
 }
 
 template <std::size_t N>
-double ScaleModel<N>::pdf_scale_invariant(const double& val) const {
+double ScaleModel<N>::pdf_scale_marginalisation(const double& val) const {
   if (!_q_pdf_den) {
     _pdf_den =
         int_mu([](const ModelPrototype& mod) { return mod.pdf_delta__mu(); });

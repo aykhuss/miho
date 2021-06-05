@@ -52,17 +52,17 @@ int main(int argc, char const* argv[]) {
   bool scl_gl = false;
   app.add_flag("--gl", scl_gl, "Gauss–Legendre");
 
-  miho::ScaleMarginalisation scl_margin{
-      miho::ScaleMarginalisation::weighted_sum};
-  std::map<std::string, miho::ScaleMarginalisation> map_margin{
-      {"ws", miho::ScaleMarginalisation::weighted_sum},
-      {"weighted_sum", miho::ScaleMarginalisation::weighted_sum},
-      {"si", miho::ScaleMarginalisation::scale_invariant},
-      {"scale_invariant", miho::ScaleMarginalisation::scale_invariant}};
+  miho::ScalePrescription scl_prescr{
+      miho::ScalePrescription::scale_average};
+  std::map<std::string, miho::ScalePrescription> map_margin{
+      {"sa", miho::ScalePrescription::scale_average},
+      {"scale_average", miho::ScalePrescription::scale_average},
+      {"sm", miho::ScalePrescription::scale_marginalisation},
+      {"scale_marginalisation", miho::ScalePrescription::scale_marginalisation}};
   // CheckedTransformer translates and checks whether the results are either in
   // one of the strings or in one of the translations already
-  app.add_option("-m,--marginalisation", scl_margin,
-                 "ScaleMarginalisation settings")
+  app.add_option("--sp", scl_prescr,
+                 "ScalePrescription settings")
       ->transform(CLI::CheckedTransformer(map_margin, CLI::ignore_case));
 
   // app_scl_gl->multi_option_policy(CLI::MultiOptionPolicy::Throw);
@@ -131,7 +131,7 @@ if (*app_scl1d) {
     // fmt::print("entered app_scl1d\n");
     auto scl1d = std::make_unique<miho::ScaleModel<1>>();
     scl1d->use_gauss_legendre(scl_gl);
-    scl1d->set_marginalisation(scl_margin);
+    scl1d->set_prescription(scl_prescr);
     if (*app_file) {
       std::vector<std::vector<double>> data = parse_data_file(file_name);
       for (const auto& record : data) {
@@ -158,7 +158,7 @@ if (*app_scl1d) {
     // fmt::print("entered app_scl2d\n");
     auto scl2d = std::make_unique<miho::ScaleModel<2>>();
     scl2d->use_gauss_legendre(scl_gl);
-    scl2d->set_marginalisation(scl_margin);
+    scl2d->set_prescription(scl_prescr);
     if (*app_file) {
       std::vector<std::vector<double>> data = parse_data_file(file_name);
       for (const auto& record : data) {
