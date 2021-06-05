@@ -122,7 +122,7 @@ double ScaleModel<N>::int_mu_gauss_legendre(
     result += _weights_gauss_legendre[iscl] *
               int_mu_gauss_legendre(fun, it, idim + 1);
   }
-  return result / 2.;  // 2 = sum(_weights_gauss_legendre)
+  return result / 2.;  // 2 = sum(_weights_gauss_legendre): GL range was [-1,+1]
 }
 
 }  // namespace miho

@@ -45,6 +45,3 @@ Run `miho -h` to get a help display.
     - `{stdev}`: the standard deviation of the distribution
     - `{norm}`: the normalisation of the PDF (should be compatible with `1`)
 
-maybe use logging at some point:
-* https://github.com/gabime/spdlog
-* https://github.com/SergiusTheBest/plog

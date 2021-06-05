@@ -40,64 +40,6 @@ double GeometricModel::pdf_delta__mu(const std::vector<double>& delta) const {
   return acc_k * _epsilon * (1. + _omega) / std::pow(2., m) / (m + _epsilon);
 }
 
-std::vector<double> GeometricModel::a_list(const std::vector<double>& delta) {
-  auto n_delta = delta.size();
-
-  std::vector<double> a;
-  a.reserve(n_delta + 1);
-
-  // "guesses"
-  a.push_back(std::numeric_limits<double>::infinity());  // a[0]
-  for (auto i = 1; i < n_delta; ++i) {
-    if (delta[i - 1] != 0.) {
-      a.push_back(std::fabs(delta[i] / delta[i - 1]));
-    } else {
-      a.push_back(std::numeric_limits<double>::infinity());
-    }
-  }
-  a.push_back(0.);  // a[n]
-
-  // patch conflicts
-  int i_low = n_delta;
-  int i_upp = 0;
-  // double val = -1.;
-  while (true) {
-    bool hit = false;
-    for (auto i = 1; i < n_delta; ++i) {
-      if (a[i] < a[i + 1]) {
-        hit = true;
-        if ((i == i_low - 1) || (i == i_upp)) {
-          // we're extending a previous range
-          i_low = std::min(i_low, i);
-          i_upp = std::max(i_upp, i + 1);
-        } else {
-          // a start of a new range
-          i_low = i;
-          i_upp = i + 1;
-        }
-        // merge
-        double val = 0.;
-        if (delta[i_low - 1] != 0.) {
-          val = std::fabs(delta[i_upp] / delta[i_low - 1]);
-        } else {
-          val = std::numeric_limits<double>::infinity();
-        }
-        val = std::pow(val, 1. / double(i_upp - i_low + 1));
-        // std::cout << "merging range [" << i_low << "," << i_upp << "] = " <<
-        // val
-        //           << std::endl;
-        for (auto j = i_low; j <= i_upp; ++j) {
-          a[j] = val;
-        }
-        break;
-      }
-    }
-    if (!hit) break;
-  }
-
-  return a;
-}
-
 double GeometricModel::a_integral(const double& a_lower, const double& a_upper,
                                   const double& epsilon, int m, int k, int j) {
   double exponent = (m + epsilon) * k - m * (m + 1) / 2. + j + 1;

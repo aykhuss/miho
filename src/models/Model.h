@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cmath>
+#include <cstddef>
 #include <iostream>
 #include <limits>
 #include <list>
@@ -16,7 +17,7 @@ class Model {
   virtual ~Model() noexcept = default;
   virtual double sigma(int order) const = 0;
   inline double sigma() const { return sigma(_n_orders - 1); }
-  inline size_t n_orders() const { return _n_orders; }
+  inline std::size_t n_orders() const { return _n_orders; }
   virtual double pdf(const double& val) const = 0;
 
   // /// The factory design pattern
@@ -64,14 +65,14 @@ class Model {
     adapt_integration(f_one, f_wgt);
     print_nodes();
   }
-  inline void set_max_nodes(size_t nmax) { _max_nodes = nmax; }
+  inline void set_max_nodes(std::size_t nmax) { _max_nodes = nmax; }
   inline void set_accuracy(const double& acc) { _target_accuracy = acc; }
 
  protected:
-  size_t _n_orders = 0;
+  std::size_t _n_orders = 0;
   double _target_accuracy = 0.001;
-  size_t _max_nodes = 10000;
-  size_t _min_nodes = 10;
+  std::size_t _max_nodes = 10000;
+  std::size_t _min_nodes = 10;
   virtual void clear() { _nodes.clear(); }
 
  private:
