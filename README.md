@@ -1,6 +1,7 @@
 # ミホ (miho) 
 > theory uncertainties from **MI**ssing **H**igher **O**rders
 
+
 ## Clone the repository
 
 External libraries are included in this repository through submodules. In addition to cloning the repository, you therefore also need to initialise and update those modules:
@@ -44,4 +45,6 @@ Run `miho -h` to get a help display.
     - `{mean}`: the mean of the distribution
     - `{stdev}`: the standard deviation of the distribution
     - `{norm}`: the normalisation of the PDF (should be compatible with `1`)
+
+A step-by-step example is given [here](examples/gamma_N3LO/README.md) for the Drell-Yan cross section.
 
