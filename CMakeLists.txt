@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.11.0 FATAL_ERROR)
 project(
   miho
   VERSION 0.1
-  DESCRIPTION "A simple tool to compue theory uncertainties"
+  DESCRIPTION "A simple tool to compute theory uncertainties"
   LANGUAGES C CXX)
   # LANGUAGES Fortran C CXX)
 
@@ -20,7 +20,7 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   # message(STATUS "install prefix set to default value ${CMAKE_INSTALL_PREFIX}")
-  set(CMAKE_INSTALL_PREFIX "${PROJECT_SOURCE_DIR}" CACHE PATH "Install irectory" FORCE)
+  set(CMAKE_INSTALL_PREFIX "${PROJECT_SOURCE_DIR}" CACHE PATH "Install directory" FORCE)
 endif()
 
 include(GNUInstallDirs)
@@ -41,6 +41,13 @@ else()
   set(DEF_INSTALL_CMAKEDIR share/cmake/${PROJECT_NAME})
 endif()
 set(INSTALL_CMAKEDIR ${DEF_INSTALL_CMAKEDIR} CACHE PATH "Installation directory for CMake files")
+
+# add rpath
+set(CMAKE_SKIP_BUILD_RPATH FALSE)
+set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+set(CMAKE_INSTALL_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 
 # Report to user
 foreach(p LIB BIN INCLUDE CMAKE)
