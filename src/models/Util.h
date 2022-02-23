@@ -34,6 +34,9 @@ double appell_F1(const double& a, const double& b1, const double& b2,
 double nintegrate_1D(std::function<double(double)> func, const double& x_low,
                      const double& x_upp);
 
+double erf_inv(const double& x);
+
+
 /// input: list of delta: d[0], ..., d[n]
 /// output: list of transitions: infty == a[0] >= ... >= a[n+1] == 0
 ///         for max{|d[0]|, |d[1]|/a, ..., |d[n]|/a^n}

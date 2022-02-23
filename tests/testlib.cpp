@@ -1,5 +1,6 @@
 #define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
+#include <cmath>
 #include <limits>
 
 #include "Model.h"
@@ -90,6 +91,21 @@ TEST_CASE("appell_f1", "[Util]") {
 
   // output_3 = rf1_adsj(11, 7, 5.3, 2.1, -0.5, 0.75);
   // REQUIRE(output_3 == Approx(check_3));
+}
+
+TEST_CASE("erf_inv", "[Util]") {
+  REQUIRE(miho::erf_inv(-0.95) == Approx(-1.3859));
+  REQUIRE(miho::erf_inv(-0.7) == Approx(-0.732869));
+  REQUIRE(miho::erf_inv(-0.23) == Approx(-0.20674));
+  REQUIRE(miho::erf_inv(-0.1) == Approx(-0.088856));
+  REQUIRE(miho::erf_inv(0.07) == Approx(0.0621157));
+  REQUIRE(miho::erf_inv(0.33) == Approx(0.301332));
+  REQUIRE(miho::erf_inv(0.42) == Approx(0.391302));
+  REQUIRE(miho::erf_inv(0.666) == Approx(0.683128));
+  REQUIRE(miho::erf_inv(0.84) == Approx(0.993536));
+  // inverse?
+  REQUIRE(miho::erf_inv(std::erf(0.123)) == Approx(0.123) );
+  REQUIRE(std::erf(miho::erf_inv(0.777)) == Approx(0.777) );
 }
 
 TEST_CASE("limits", "[Model]") {
