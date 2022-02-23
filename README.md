@@ -48,3 +48,25 @@ Run `miho -h` to get a help display.
 
 A step-by-step example is given [here](examples/gamma_N3LO/README.md) for the Drell-Yan cross section.
 
+## Citation
+
+[![arXiv](https://img.shields.io/badge/arXiv-2106.04585%20-orange)](https://arxiv.org/abs/2106.04585)
+[![DOI](https://img.shields.io/badge/DOI-10.1007/JHEP09(2021)122-B31B1B.svg)](https://doi.org/10.1007/JHEP09(2021)122)
+
+If you use miho, please cite the following reference:
+
+```
+@article{Duhr:2021mfd,
+    author = "Duhr, Claude and Huss, Alexander and Mazeliauskas, Aleksas and Szafron, Robert",
+    title = "{An analysis of Bayesian estimates for missing higher orders in perturbative calculations}",
+    eprint = "2106.04585",
+    archivePrefix = "arXiv",
+    primaryClass = "hep-ph",
+    reportNumber = "CERN-TH-2021-058",
+    doi = "10.1007/JHEP09(2021)122",
+    journal = "JHEP",
+    volume = "09",
+    pages = "122",
+    year = "2021"
+}
+```
