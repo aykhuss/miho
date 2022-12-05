@@ -69,7 +69,8 @@ void Model::adapt_integration(std::function<double(double)> func,
 
   auto f_sig = [&sig_ctr](const double& x) {
     const volatile double oMx_sq = (1 - x) * (1 + x);
-    return sig_ctr * (1 + x / oMx_sq);
+    const volatile double sgn_x = (sig_ctr>=0) ? x : -x;;
+    return sig_ctr * (1 + sgn_x / oMx_sq);
   };
   auto f_jac = [&sig_ctr](const double& x) {
     const volatile double oMx_sq = (1 - x) * (1 + x);
